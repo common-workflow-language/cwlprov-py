@@ -54,6 +54,10 @@ setup(
           'rdflib-jsonld >= 0.4.0',
           'rdflib >= 4.2.2',        
   ],
+  tests_require=['pytest'],
+  entry_points={
+      'console_scripts': ["cwlprov=cwlprov.tool:main"]
+  },
   python_requires='>=3.6, <4',
   classifiers=[
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
