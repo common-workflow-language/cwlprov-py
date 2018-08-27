@@ -29,14 +29,15 @@ from enum import IntEnum
 class Status(IntEnum):
     """Exit codes from main()"""
     OK = 0
-    INVALID = 1 
+    INVALID_BAG = 1
+    MISSING_PROFILE = 2
 
 def parse_args(args):
     parser = argparse.ArgumentParser(description='cwlprov')
     parser.add_argument("ro", 
         help="Path to CWLProv Research Object folder")
     parser.add_argument("--validate", 
-        help="Validate CWLProv RO", action="store_true")
+        help="Validate CWLProv RO and return", action="store_true")
     return parser.parse_args(args)
 
 def main(*args):
@@ -44,14 +45,32 @@ def main(*args):
     """cwlprov command line tool"""
     args = parse_args(args)
     
-    bag = bagit.Bag(args.ro)    
+    bag = bagit.Bag(args.ro)
+
+    ## BagIt check
     # Always do a minimal validation, but
-    # will also test checksum on --validate
-    valid = bag.validate(fast=args.validate)
+    # will also test checksum on --validate    
+    valid_bag = bag.validate(fast=args.validate)
+
+    ## RO check    
+    profiles = bag.info.get("BagIt-Profile-Identifier", ())
+    is_ro = "https://w3id.org/ro/bagit/profile" in profiles
+    # TODO: Find the master run
+
+
+    ##PROV check
+    # TODO: Prov check
+    
     if args.validate:
+        # TODO: More checks, e.g. every PROV file valid
+        if not valid_bag:
+            return Status.INVALID_BAG
+        if not is_ro:
+            return Status.MISSING_PROFILE
+
+        # Done, return status (any errors should be logged by bagit)
         return valid : Status.OK ? Status.INVALID
     
-
 
     # Probably went fine if we made it to here        
     return Status.OK
