@@ -49,7 +49,8 @@ setup(
   
   install_requires=[
           'prov >= 1.5.1',
-          'bagit >= 1.6.4',
+          'bdbag >= 1.4.1',
+          #'bagit >= 1.6.4', # Transitive from bdbag
           'arcp >= 0.2.0',
           'rdflib-jsonld >= 0.4.0',
           'rdflib >= 4.2.2',        

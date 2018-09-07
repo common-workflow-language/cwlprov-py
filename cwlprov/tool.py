@@ -23,14 +23,23 @@ from cwlprov.ro import ResearchObject
 import arcp
 import bagit
 
+import bdbag
+from bdbag.bdbagit import BDBag
+import posixpath
+
 from enum import IntEnum
 
-BAGIT_RO_PROFILE = "https://w3id.org/ro/bagit/profile"
+BAGIT_RO_PROFILES = set((
+    "https://w3id.org/ro/bagit/profile", 
+    "http://raw.githubusercontent.com/fair-research/bdbag/master/profiles/bdbag-ro-profile.json"
+))
 CWLPROV_SUPPORTED = set((
     # Decreasing order as first item is output as example
     "https://w3id.org/cwl/prov/0.4.0",
     "https://w3id.org/cwl/prov/0.3.0",
 ))
+
+MANIFEST_JSON = posixpath.join("metadata", "manifest.json")
 
 class Status(IntEnum):
     """Exit codes from main()"""
@@ -54,7 +63,7 @@ def main(*args):
     """cwlprov command line tool"""
     args = parse_args(args)
 
-    bag = bagit.Bag(args.ro)
+    bag = BDBag(args.ro)
 
     ## BagIt check
     # Always do a minimal validation, but
@@ -62,8 +71,8 @@ def main(*args):
     valid_bag = bag.validate(fast=args.validate)
 
     ## RO check
-    profiles = bag.info.get("BagIt-Profile-Identifier", ())
-    is_ro = BAGIT_RO_PROFILE in profiles
+    profiles = set(bag.info.get("BagIt-Profile-Identifier", ()))
+    supported_ro = BAGIT_RO_PROFILES.intersection(profiles)
     cwlprov = set()
     for p in profiles:
         if "https://w3id.org/cwl/prov/" in p:
@@ -71,8 +80,13 @@ def main(*args):
     supported_cwlprov = CWLPROV_SUPPORTED.intersection(cwlprov)
     if cwlprov and not supported_cwlprov:
         print("Unsupported CWLProv version: %s" % cwlprov, file=sys.stderr)
-
-    # TODO: Find the master run
+    
+    manifest = None
+    has_manifest = MANIFEST_JSON in bag.tagfile_entries()
+    if not has_manifest:
+        print("Missing " + MANIFEST_JSON)
+        return Status.MISSING_MANIFEST
+    # TODO: Parse manifest as RDF
 
 
     ##PROV check
@@ -84,9 +98,9 @@ def main(*args):
             print("Invalid BagIt folder: %s" % args.ro,
                 file=sys.stderr)
             return Status.INVALID_BAG
-        if not is_ro:
-            print("Missing BdBag profile (%s): %s" %
-                (BAGIT_RO_PROFILE, args.ro),
+        if not supported_ro:
+            print("Missing BdBag profile (e.g. %s): %s" %
+                (next(iter(BAGIT_RO_PROFILES)), args.ro),
                 file=sys.stderr)
             return Status.MISSING_PROFILE
         if not cwlprov:
@@ -100,6 +114,7 @@ def main(*args):
                 " ".join(CWLPROV_SUPPORTED),
                 file=sys.stderr)
             return Status.MISSING_PROFILE
+
 
             return Status.UNSUPPORTED_CWLPROV_VERSION
 
