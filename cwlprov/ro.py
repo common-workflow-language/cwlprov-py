@@ -21,5 +21,24 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
+import arcp
+
 class ResearchObject:
-    pass
+    def __init__(self, bag):
+        bag.validate()
+        
+
+        manifest_file = os.path.join(self.folder, "metadata", "manifest.json")
+        self.assertTrue(os.path.isfile(manifest_file), "Can't find " + manifest_file)
+        arcp_root = self.find_arcp()
+        base = urllib.parse.urljoin(arcp_root, "metadata/manifest.json")
+        g = Graph()
+
+        # Avoid resolving JSON-LD context https://w3id.org/bundle/context
+        # so this test works offline
+        context = Path(get_data("tests/bundle-context.jsonld")).as_uri()
+        with open(manifest_file, "r", encoding="UTF-8") as f:
+            jsonld = f.read()
+            # replace with file:/// URI
+            jsonld = jsonld.replace("https://w3id.org/bundle/context", context)
+        g.parse(data=jsonld, format="json-ld", publicID=base)

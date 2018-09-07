@@ -48,7 +48,7 @@ class Status(IntEnum):
     MISSING_PROFILE = 2
     UNSUPPORTED_CWLPROV_VERSION = 3
 
-def parse_args(args):
+def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov')
 
     parser.add_argument("ro",
@@ -58,7 +58,7 @@ def parse_args(args):
 
     return parser.parse_args(args)
 
-def main(*args):
+def main(args=None):
     # type: (...) -> None
     """cwlprov command line tool"""
     args = parse_args(args)
@@ -122,5 +122,5 @@ def main(*args):
     return Status.OK
 
 if __name__ == "__main__":
-    sys.exit(main(*sys.argv[1:]))
+    sys.exit(main())
 
