@@ -61,7 +61,8 @@ def parse_args(args=None):
     subparsers = parser.add_subparsers(title='commands', dest="cmd")
     parser_validate = subparsers.add_parser('validate', help='validate the CWLProv RO')
     parser_info = subparsers.add_parser('info', help='CWLProv RO')
-    parser_runs = subparsers.add_parser('runs', help='show workflow runs')
+    parser_run = subparsers.add_parser('run', help='show workflow execution')
+    parser_run.add_argument("id", default=None, nargs="?")
     parser_who = subparsers.add_parser('who', help='who ran the workflow')
 
     return parser.parse_args(args)
@@ -158,8 +159,9 @@ def who(ro, args):
 
     return Status.OK
 
-def runs(ro, args):
-    # about RO?
+def run(ro, args):
+    w = args.id or ro.workflow_id
+    print("Run: %s" % w)
 
 
     return Status.OK
@@ -194,7 +196,7 @@ def main(args=None):
     # Else, find the other commands
     COMMANDS = {
         "info": info,
-        "runs": runs,
+        "run": run,
         "who": who
     }
     
