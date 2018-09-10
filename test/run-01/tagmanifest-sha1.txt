@@ -1,6 +1,5 @@
 53692d1c3fd704a5ec4d48dea0ec1feeb5526560  workflow/packed.cwl
 5f36b2ea290645ee34d943220a14b54ee5ea5be5  workflow/primary-job.json
-5f36b2ea290645ee34d943220a14b54ee5ea5be5  workflow/primary-job.json
 9a4b7aba9eefc1f1a566447518b6934774e8c108  metadata/provenance/workflow_20compile.0cceeaf6-4109-4f08-940b-f06ac959944a.cwlprov.xml
 bcb4d1892a7e555fdff64135179f4ffc0fc34230  metadata/provenance/workflow_20compile.0cceeaf6-4109-4f08-940b-f06ac959944a.cwlprov.provn
 0f2be8dce28db1ca6c52bf92c3c7fa14b50cf86f  metadata/provenance/workflow_20compile.0cceeaf6-4109-4f08-940b-f06ac959944a.cwlprov.json
