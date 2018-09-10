@@ -132,10 +132,20 @@ def validate_ro(ro, full_validation=False):
             return Status.UNSUPPORTED_CWLPROV_VERSION
     return Status.OK
 
+def many(s):
+    return ", ".join(map(str, s))
+
 def info(ro, args):
+    # About RO?
+    print("Research Object: %s" % ro.id)
+    cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
+    if cwlprov:
+        print("Profile: %s" % many(cwlprov))
+    print("Created By: %s" % many(ro.createdBy) or "(unknown)")
+    print("Authored By: %s" % many(ro.authoredBy) or "(unknown)")
     return Status.OK
 
-def who(ro, args):
+def who(ro, args):    
     return Status.OK
 
 def runs(ro, args):

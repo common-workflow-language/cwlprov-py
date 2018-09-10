@@ -23,12 +23,13 @@ __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
 import pkg_resources
+from functools import partial
 import urllib.parse
 import pathlib
 import json
 import arcp
-from rdflib import Namespace, URIRef, Graph, Literal
-from rdflib.namespace import RDF,RDFS,SKOS,DCTERMS,FOAF,XSD,DC
+from rdflib import Namespace, URIRef, Graph, Literal, BNode
+from rdflib.namespace import RDF,RDFS,SKOS,DCTERMS,FOAF,XSD,DC,OWL
 
 MANIFEST_PATH=pathlib.PurePosixPath("metadata/manifest.json")
 
@@ -45,6 +46,7 @@ def _resource_as_path(path):
 ORE = Namespace("http://www.openarchives.org/ore/terms/")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 RO = Namespace("http://purl.org/wf4ever/ro#")
+PAV = Namespace("http://purl.org/pav/")
 WFDESC = Namespace("http://purl.org/wf4ever/wfdesc#")
 WFPROV = Namespace("http://purl.org/wf4ever/wfprov#")
 SCHEMA = Namespace("http://schema.org/")
@@ -66,10 +68,16 @@ class ResearchObject:
         if ext_id and arcp.is_arcp_uri(ext_id):
             return ext_id
         else:
-            return arcp.arcp_random()
+            return arcp.arcp_random() 
     
-    @property
+    @property 
     def id(self):
+        i = self.id_uriref
+        if isinstance(i, BNode):
+           return next(self.manifest.objects(i, OWL.sameAs))
+
+    @property
+    def id_uriref(self):
         manifest = URIRef(self.resolve_uri("metadata/manifest.json"))
         ros = set(self.manifest.subjects(ORE.isDescribedBy, manifest))
         if not ros:
@@ -131,10 +139,52 @@ class ResearchObject:
         elif path:
             return URIRef(self.resolve_uri(path))
         else:
-            return self.id
+            return self.id_uriref
 
     @property
     def conformsTo(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
         return set(map(str, self.manifest.objects(resource, DCTERMS.conformsTo)))
+    
+    @property
+    def createdBy(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        new_agent = partial(Agent, self.manifest)
+        return set(map(new_agent, self.manifest.objects(resource, PAV.createdBy)))
 
+    @property
+    def authoredBy(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        new_agent = partial(Agent, self.manifest)
+        return set(map(new_agent, self.manifest.objects(resource, PAV.authoredBy)))
+
+class Agent:
+    def __init__(self, graph, uri):
+        self._graph = graph
+        self._id = uri
+    
+    @property
+    def uri(self):
+        if isinstance(self._id, URIRef):
+            return str(self._id)
+    
+    @property
+    def name(self):
+        return next(self._graph.objects(self._id, FOAF.name), None)
+
+    @property
+    def orcid(self):
+        next((str(n) for n in self._graph.objects(self._id, OWL.sameAs)), None)
+
+    def __repr__(self):
+        return "<Agent %s>" % self._id
+
+    def __str__(self):        
+        s = self.name or "(unknown)"
+        o = self.orcid
+        if o:
+            s += " <o>" % o
+        u = self.uri
+        if u:
+            s += " <%s>" % u
+        return s
