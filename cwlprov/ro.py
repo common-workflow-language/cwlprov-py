@@ -46,6 +46,7 @@ def _resource_as_path(path):
 ORE = Namespace("http://www.openarchives.org/ore/terms/")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 RO = Namespace("http://purl.org/wf4ever/ro#")
+ROTERMS = Namespace("http://purl.org/wf4ever/roterms#")
 PAV = Namespace("http://purl.org/pav/")
 WFDESC = Namespace("http://purl.org/wf4ever/wfdesc#")
 WFPROV = Namespace("http://purl.org/wf4ever/wfprov#")
@@ -204,7 +205,7 @@ class Agent:
     @property
     def uri(self):
         if isinstance(self._id, URIRef):
-            return str(self._id)
+            return self._id
     
     @property
     def name(self):
@@ -212,7 +213,7 @@ class Agent:
 
     @property
     def orcid(self):
-        return next((str(n) for n in self._graph.objects(self._id, OWL.sameAs)), None)
+        return next(self._graph.objects(self._id, ROTERMS.orcid), None)
 
     def __repr__(self):
         return "<Agent %s>" % self._id
@@ -221,7 +222,7 @@ class Agent:
         s = self.name or "(unknown)"
         o = self.orcid
         if o:
-            s += " <o>" % o
+            s += " <%s>" % o
         u = self.uri
         if u:
             s += " <%s>" % u

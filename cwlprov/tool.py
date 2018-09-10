@@ -137,23 +137,31 @@ def many(s):
 
 def info(ro, args):
     # About RO?
-    print("Research Object: %s" % ro.id)
+    print(ro.bag.info.get("External-Description", "Research Object"))
+    print("ID: %s" % ro.id)
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if cwlprov:
         print("Profile: %s" % many(cwlprov))
-    
-    print("Workflow ID: %s" % ro.workflow_id)
+    w = ro.workflow_id
+    if w:
+        print("Workflow ID: %s" % w)
+    when = ro.bag.info.get("Bagging-Date")
+    if when:
+        print("Packaged: %s" % when)
 
     return Status.OK
 
 def who(ro, args): 
     # about RO?
-    print("Created By: %s" % many(ro.createdBy) or "(unknown)")
-    print("Authored By: %s" % many(ro.authoredBy) or "(unknown)")
+    print("Packaged By: %s" % many(ro.createdBy) or "(unknown)")
+    print("Executed By: %s" % many(ro.authoredBy) or "(unknown)")
 
     return Status.OK
 
 def runs(ro, args):
+    # about RO?
+
+
     return Status.OK
 
 def main(args=None):
