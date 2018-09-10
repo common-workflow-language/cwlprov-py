@@ -203,7 +203,6 @@ class Agent:
     
     @property
     def uri(self):
-        return self._id
         if isinstance(self._id, URIRef):
             return str(self._id)
     
