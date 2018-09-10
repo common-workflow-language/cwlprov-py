@@ -60,8 +60,6 @@ class ResearchObject:
         self.root_path = pathlib.Path(bag.path).absolute()        
         self.root_uri = self._find_arcp()
         self._load_manifest()
-        self.id = self._find_id()
-
         
     def _find_arcp(self):
         ext_id = self.bag.info.get("External-Identifier")
@@ -70,26 +68,36 @@ class ResearchObject:
         else:
             return arcp.arcp_random()
     
-    def _find_id(self):
-        ros = set(self.manifest.subjects(RDF.type, RO.ResearchObject))
+    @property
+    def id(self):
+        manifest = URIRef(self.resolve_uri("metadata/manifest.json"))
+        ros = set(self.manifest.subjects(ORE.isDescribedBy, manifest))
+        if not ros:
+            ros = set(self.manifest.subjects(ORE.aggregates))
+        if not ros:
+            # _:bnode owl:sameAs arcp://.../
+            ros = set(self.manifest.subjects(OWL.sameAs, URIRef(self.root_uri)))
         if len(ros) == 1:
             return ros.pop()
         elif ros:
-            print("Warning: More than 1 ro:ResearchObject in manifest", file=sys.stderr)
-        return self.root_uri
+            print("Warning: More than 1 Research Object in manifest", file=sys.stderr)
+            # We can't just return the first one as order is not guaranteed
+
+        # Use arcp://.../ root as fallback
+        return URIRef(self.root_uri)
     
     def resolve_uri(self, relative_uri):
         return urllib.parse.urljoin(self.root_uri, str(relative_uri))
 
     def resolve_path(self, uri_path):
-        if arcp.is_arcp_uri(uri_path):
+        if arcp.is_arcp_uri(str(uri_path)):
             uri = arcp.parse_arcp(uri_path)
             # Ensure same base URI meaning this bagit
             assert urllib.parse.urljoin(uri, "/") == self.root_uri
             # Strip initial / so path is relative
             path = pathlib.PurePosixPath(uri.path[1:])
         else:            
-            path = pathlib.PurePosixPath(relative_posix_path)
+            path = pathlib.PurePosixPath(uri_path)
         assert not path.is_absolute()
 
         if not str(path) in self.bag.entries:
@@ -116,7 +124,17 @@ class ResearchObject:
         self.manifest = g
         return g
 
+
+    def _uriref(self, path=None, uri=None):
+        if uri:
+            return URIRef(uri)
+        elif path:
+            return URIRef(self.resolve_uri(path))
+        else:
+            return self.id
+
     @property
-    def conformsTo(self):
-        self.manifest.objects()
+    def conformsTo(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        return set(map(str, self.manifest.objects(resource, DCTERMS.conformsTo)))
 

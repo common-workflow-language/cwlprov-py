@@ -36,6 +36,7 @@ BAGIT_RO_PROFILES = set((
 ))
 CWLPROV_SUPPORTED = set((
     # Decreasing order as first item is output as example
+    "https://w3id.org/cwl/prov/0.5.0",
     "https://w3id.org/cwl/prov/0.4.0",
     "https://w3id.org/cwl/prov/0.3.0",
 ))
