@@ -40,7 +40,7 @@ setup(
   long_description=long_description,
   author = 'Stian Soiland-Reyes',
   author_email = 'stain@apache.org',
-  
+  include_package_data=True,
   # https://www.apache.org/licenses/LICENSE-2.0
   license = "Apache License, Version 2.0",
   url = 'https://github.com/common-workflow-language/cwlprov-py',

@@ -16,29 +16,107 @@
 
 """
 cwlprov Research Object
+
 """
 __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
+import pkg_resources
+import urllib.parse
+import pathlib
+import json
 import arcp
+from rdflib import Namespace, URIRef, Graph, Literal
+from rdflib.namespace import RDF,RDFS,SKOS,DCTERMS,FOAF,XSD,DC
+
+MANIFEST_PATH=pathlib.PurePosixPath("metadata/manifest.json")
+
+def _resource_as_path(path):
+    filename = pkg_resources.resource_filename(__package__, path)
+    p = pathlib.Path(filename)
+    assert p.exists
+    return p
+
+
+
+
+# RDF namespaces we might query for later
+ORE = Namespace("http://www.openarchives.org/ore/terms/")
+PROV = Namespace("http://www.w3.org/ns/prov#")
+RO = Namespace("http://purl.org/wf4ever/ro#")
+WFDESC = Namespace("http://purl.org/wf4ever/wfdesc#")
+WFPROV = Namespace("http://purl.org/wf4ever/wfprov#")
+SCHEMA = Namespace("http://schema.org/")
+CWLPROV = Namespace("https://w3id.org/cwl/prov#")
+OA = Namespace("http://www.w3.org/ns/oa#")
 
 class ResearchObject:
     def __init__(self, bag):
-        bag.validate()
-        
+        if not bag.normalized_filesystem_names:
+            # Not populated? Validate
+            bag.validate()
+        self.bag = bag
+        self.root_path = pathlib.Path(bag.path).absolute()        
+        self.root_uri = self._find_arcp()
+        self._load_manifest()
+        self.id = self._find_id()
 
-        manifest_file = os.path.join(self.folder, "metadata", "manifest.json")
-        self.assertTrue(os.path.isfile(manifest_file), "Can't find " + manifest_file)
-        arcp_root = self.find_arcp()
-        base = urllib.parse.urljoin(arcp_root, "metadata/manifest.json")
-        g = Graph()
+        
+    def _find_arcp(self):
+        ext_id = self.bag.info.get("External-Identifier")
+        if ext_id and arcp.is_arcp_uri(ext_id):
+            return ext_id
+        else:
+            return arcp.arcp_random()
+    
+    def _find_id(self):
+        ros = set(self.manifest.subjects(RDF.type, RO.ResearchObject))
+        if len(ros) == 1:
+            return ros.pop()
+        elif ros:
+            print("Warning: More than 1 ro:ResearchObject in manifest", file=sys.stderr)
+        return self.root_uri
+    
+    def resolve_uri(self, relative_uri):
+        return urllib.parse.urljoin(self.root_uri, str(relative_uri))
+
+    def resolve_path(self, uri_path):
+        if arcp.is_arcp_uri(uri_path):
+            uri = arcp.parse_arcp(uri_path)
+            # Ensure same base URI meaning this bagit
+            assert urllib.parse.urljoin(uri, "/") == self.root_uri
+            # Strip initial / so path is relative
+            path = pathlib.PurePosixPath(uri.path[1:])
+        else:            
+            path = pathlib.PurePosixPath(relative_posix_path)
+        assert not path.is_absolute()
+
+        if not str(path) in self.bag.entries:
+            raise IOError("Not found in bag manifest/tagmanifest: %s" % uri_path)
+        # resolve as OS-specific path
+        absolute = pathlib.Path(self.root_path, path)
+        # ensure it did not climb out (will throw ValueError if not)
+        assert absolute.relative_to(self.root_path)
+        return absolute
+
+    def _load_manifest(self):
+        manifest_file = self.resolve_path(MANIFEST_PATH)
+        base_arcp = self.resolve_uri(MANIFEST_PATH)
 
         # Avoid resolving JSON-LD context https://w3id.org/bundle/context
         # so this test works offline
-        context = Path(get_data("tests/bundle-context.jsonld")).as_uri()
+        context = _resource_as_path("context/bundle.jsonld").as_uri()
+        g = Graph()
         with open(manifest_file, "r", encoding="UTF-8") as f:
             jsonld = f.read()
             # replace with file:/// URI
             jsonld = jsonld.replace("https://w3id.org/bundle/context", context)
-        g.parse(data=jsonld, format="json-ld", publicID=base)
+        g.parse(data=jsonld, format="json-ld", publicID=base_arcp)
+        self.manifest = g
+        return g
+
+    @property
+    def conformsTo(self):
+        self.manifest.objects()
+
