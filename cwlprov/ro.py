@@ -158,6 +158,44 @@ class ResearchObject:
         new_agent = partial(Agent, self.manifest)
         return set(map(new_agent, self.manifest.objects(resource, PAV.authoredBy)))
 
+    def annotations_about(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        new_annotation = partial(Annotation, self.manifest)
+        return set(map(new_annotation, self.manifest.subjects(OA.hasTarget, resource)))
+
+    def annotations_with_content(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        new_annotation = partial(Annotation, self.manifest)
+        return set(map(new_annotation, self.manifest.subjects(OA.hasBody, resource)))
+
+    def describes(self, path=None, uri=None):
+        return next((a.hasTarget for a in self.annotations_with_content(path, uri)
+                   if a.motivatedBy == OA.describing), None)
+
+    @property
+    def workflow_id(self):
+        return self.describes(uri=self.id)
+
+class Annotation:
+    def __init__(self, graph, uri):
+        self._graph = graph
+        self._id = uri
+
+    @property
+    def hasBody(self):
+        return next(self._graph.objects(self._id, OA.hasBody), None)
+
+    @property    
+    def hasTarget(self):
+        return next(self._graph.objects(self._id, OA.hasTarget), None)
+
+    @property    
+    def motivatedBy(self):
+        return next(self._graph.objects(self._id, OA.motivatedBy), None)
+
+    def __repr__(self):
+        return "<Annotation %s>" % self._id
+
 class Agent:
     def __init__(self, graph, uri):
         self._graph = graph
@@ -165,6 +203,7 @@ class Agent:
     
     @property
     def uri(self):
+        return self._id
         if isinstance(self._id, URIRef):
             return str(self._id)
     
@@ -174,7 +213,7 @@ class Agent:
 
     @property
     def orcid(self):
-        next((str(n) for n in self._graph.objects(self._id, OWL.sameAs)), None)
+        return next((str(n) for n in self._graph.objects(self._id, OWL.sameAs)), None)
 
     def __repr__(self):
         return "<Agent %s>" % self._id

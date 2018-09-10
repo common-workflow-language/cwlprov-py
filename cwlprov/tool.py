@@ -141,11 +141,16 @@ def info(ro, args):
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if cwlprov:
         print("Profile: %s" % many(cwlprov))
-    print("Created By: %s" % many(ro.createdBy) or "(unknown)")
-    print("Authored By: %s" % many(ro.authoredBy) or "(unknown)")
+    
+    print("Workflow ID: %s" % ro.workflow_id)
+
     return Status.OK
 
-def who(ro, args):    
+def who(ro, args): 
+    # about RO?
+    print("Created By: %s" % many(ro.createdBy) or "(unknown)")
+    print("Authored By: %s" % many(ro.authoredBy) or "(unknown)")
+
     return Status.OK
 
 def runs(ro, args):
