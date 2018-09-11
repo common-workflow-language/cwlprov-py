@@ -66,6 +66,10 @@ def parse_args(args=None):
         help="Path to CWLProv Research Object folder (default: .)",
         default=None
         )
+    parser.add_argument("--hints", default=True, action='store_true',
+        help="Show hints on cwlprov usage")
+    parser.add_argument("--no-hints", default=True, action='store_false',
+        dest="hints", help="Do not show hints")
     subparsers = parser.add_subparsers(title='commands', dest="cmd")
     parser_validate = subparsers.add_parser('validate', help='validate the CWLProv RO')
     parser_info = subparsers.add_parser('info', help='CWLProv RO')
@@ -78,7 +82,34 @@ def parse_args(args=None):
     parser_run = subparsers.add_parser('run', help='show workflow execution')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_run.add_argument("--step", "-s", default=None, 
-        help="Show only step (UUID)")
+        help="Show only step with given UUID")
+    parser_run.add_argument("--steps",  default=True, action='store_true',
+        help="List steps of workflow")
+    parser_run.add_argument("--no-steps", default=True, action='store_false',
+        dest="steps", help="Do not list steps")
+
+    parser_run.add_argument("--start",  default=True, action='store_true',
+        help="Show start timestamps (default)")
+    parser_run.add_argument("--no-start", "-S", default=True, action='store_false',
+        dest="start", help="Do not show start timestamps")
+
+    parser_run.add_argument("--end", "-e", default=False, action='store_true',
+        help="Show end timestamps")
+    parser_run.add_argument("--no-end", default=False, action='store_false',
+        dest="end", help="Do not show end timestamps")
+
+
+    parser_run.add_argument("--duration",  default=True, action='store_true',
+        help="Show step duration (default)")
+    parser_run.add_argument("--no-duration", "-D", default=True, action='store_false',
+        dest="duration", help="Do not show step duration")
+
+    parser_run.add_argument("--labels",  default=True, action='store_true',
+        help="Show activity labels")
+    parser_run.add_argument("--no-labels", "-L", default=True, action='store_false',
+        dest="labels", help="Do not show activity labels")
+
+
     parser_run.add_argument("--inputs", "-i", default=False, 
         action='store_true', help="Show inputs")
     parser_run.add_argument("--outputs", "-o", default=False, 
@@ -229,43 +260,68 @@ def run(ro, args):
     if not activity:
         print("Provenance does not describe activity %s" % uri, file=sys.stderr)
         return Status.UNKNOWN_RUN
-    print(_first(activity.get_attribute("prov:label")) or "")
+    label = ""
+    if args.labels:
+        label = " %s " % (_first(activity.get_attribute("prov:label")) or "")
     
     start = _first(_prov_with_attr(prov_doc, ProvStart, activity_id))
-    if start:
-        print("Workflow start:", _prov_attr(PROV_ATTR_TIME, start))
-    else:
-        print("Workflow start")
-
-    started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
-    steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
-    have_nested = False
-    for child in steps:
-        c_activity = _first(prov_doc.get_record(child))
-        c_label = _first(c_activity.get_attribute("prov:label")) or ""
-        c_start = _first(_prov_with_attr(prov_doc, ProvStart, child))
-        c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
-        c_end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
-        c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
-        
-        c_duration = None
-        if c_start_time and c_end_time:
-            c_duration = c_end_time - c_start_time
-
-
-        c_provenance = ro.provenance(child.uri)
-        have_nested = have_nested or c_provenance
-        c_id = str(child.uri).replace("urn:uuid:", "")
-        c_start_time = c_start_time or "(unknown start time)     "
-        print("%s  %s %s %s  (%s) " % (c_start_time, c_id, c_provenance and "*" or " ", c_label, c_duration or "unknown duration"))
-
-    if have_nested:
-        print(" * indicates nested provenance. Use run UUID as argument to 'cwlprov prov' or 'cwlprov run'")
+    start_time = start and _prov_attr(PROV_ATTR_TIME, start)
     end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
-    if end:
-         print("Workflow end:", _prov_attr(PROV_ATTR_TIME, end))
+    end_time = end and _prov_attr(PROV_ATTR_TIME, end)
+    
+    PADDING = " " * 26  # len("2018-08-08 22:44:06.573330")
+
+    w_duration = ""
+    if args.duration:
+        if start_time and end_time:
+            w_duration = " (%s)" % (end_time - start_time)
+        else:
+            w_duration = " (unknown duration)"
+
+    if args.start:
+        print("%s  Flow %s >%s%s" % (start_time or PADDING, name, label, w_duration))
     else:
-        print("Workflow end")
+        print("Flow %s >%s%s" % (name, label, w_duration))
+
+    have_nested = False
+    if args.steps:
+        started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
+        steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
+        for child in steps:
+            c_activity = _first(prov_doc.get_record(child))
+            c_label = ""
+            if args.labels:
+                c_label = " %s " % (_first(c_activity.get_attribute("prov:label")) or "")
+            c_start = _first(_prov_with_attr(prov_doc, ProvStart, child))
+            c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
+            c_end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
+            c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
+
+            c_duration = ""
+            if args.duration:
+                if c_start_time and c_end_time:
+                    c_duration = " (%s)" % (c_end_time - c_start_time)
+                else:
+                    c_duration = " (unknown duration)"
+
+            c_provenance = ro.provenance(child.uri)
+            have_nested = have_nested or c_provenance
+            c_id = str(child.uri).replace("urn:uuid:", "")
+            c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
+            c_end_time = args.end and "%s  " % (c_end_time or PADDING)
+            print("%s%s Step %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
+
+    if args.end or args.start:
+        print("%s  Flow %s <%s%s" % (end_time or PADDING, name, label, w_duration))
+    else:
+        print("Flow %s <%s%s" % (name, label, w_duration))
+
+    if args.hints:
+        print("Legend:")
+        print("  > Workflow start")
+        if have_nested:
+            print("  * Nested provenance, use UUID to explore: cwlprov run %s" % c_id)
+        print("  < Workflow start")
 
     return Status.OK
 
