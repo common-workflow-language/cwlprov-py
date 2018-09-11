@@ -23,7 +23,6 @@ from cwlprov.ro import ResearchObject
 # TODO: Move any use these to cwlprov.*
 import arcp
 import bagit
-from prov.identifier import Identifier
 from uuid import UUID
 import bdbag
 from bdbag.bdbagit import BDBag
@@ -31,8 +30,8 @@ import posixpath
 import pathlib
 from pathlib import Path
 import shutil
-from prov.model import ProvDocument
-
+from prov.identifier import Identifier
+from prov.model import *
 from enum import IntEnum
 
 BAGIT_RO_PROFILES = (
@@ -146,7 +145,7 @@ def validate_ro(ro, full_validation=False):
             return Status.UNSUPPORTED_CWLPROV_VERSION
     return Status.OK
 
-def many(s):
+def _many(s):
     return ", ".join(map(str, s))
 
 def info(ro, args):
@@ -155,7 +154,7 @@ def info(ro, args):
     print("ID: %s" % ro.id)
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if cwlprov:
-        print("Profile: %s" % many(cwlprov))
+        print("Profile: %s" % _many(cwlprov))
     w = ro.workflow_id
     if w:
         print("Workflow ID: %s" % w)
@@ -167,8 +166,8 @@ def info(ro, args):
 
 def who(ro, args): 
     # about RO?
-    print("Packaged By: %s" % many(ro.createdBy) or "(unknown)")
-    print("Executed By: %s" % many(ro.authoredBy) or "(unknown)")
+    print("Packaged By: %s" % _many(ro.createdBy) or "(unknown)")
+    print("Executed By: %s" % _many(ro.authoredBy) or "(unknown)")
     return Status.OK
 
 def path(p, ro):
@@ -208,8 +207,17 @@ def run(ro, args):
         print("Provenance does not describe activity %s" % uri, file=sys.stderr)
         return Status.UNKNOWN_RUN
     print(_first(activity.get_attribute("prov:label")) or "")
-    print("Started:", _first(activity.get_attribute("prov:startTime")) or "(unknown)")
-    print("Ended:", _first(activity.get_attribute("prov:endTime")) or "(unknown)")
+    
+    for start in prov_doc.get_records(ProvStart):
+        if (PROV_ATTR_ACTIVITY, activity_id) in start.attributes:
+            print("Started:", _first(start.get_attribute(PROV_ATTR_TIME)))
+    for end in prov_doc.get_records(ProvEnd):
+        if (PROV_ATTR_ACTIVITY, activity_id) in end.attributes:
+            print("Ended:", _first(end.get_attribute(PROV_ATTR_TIME)))
+
+    for child in prov_doc.get_records(ProvStart):
+        if (PROV_ATTR_STARTER, activity_id) in child.attributes:
+            print("Step:", child)
 
     return Status.OK
 
