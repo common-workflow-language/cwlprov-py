@@ -16,6 +16,8 @@
 
 import sys
 import argparse
+from functools import partial
+
 
 
 from cwlprov.ro import ResearchObject
@@ -188,6 +190,14 @@ def _wf_id(ro, args):
 def _first(iterable):
     return next(iter(iterable), None)
 
+def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACTIVITY):
+    for elem in prov_doc.get_records(prov_type):
+        if (with_attrib, attrib_value) in elem.attributes:
+            yield elem
+
+def _prov_attr(attr, elem):
+    return _first(elem.get_attribute(attr))
+
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
@@ -208,16 +218,31 @@ def run(ro, args):
         return Status.UNKNOWN_RUN
     print(_first(activity.get_attribute("prov:label")) or "")
     
-    for start in prov_doc.get_records(ProvStart):
-        if (PROV_ATTR_ACTIVITY, activity_id) in start.attributes:
-            print("Started:", _first(start.get_attribute(PROV_ATTR_TIME)))
-    for end in prov_doc.get_records(ProvEnd):
-        if (PROV_ATTR_ACTIVITY, activity_id) in end.attributes:
-            print("Ended:", _first(end.get_attribute(PROV_ATTR_TIME)))
+    start = _first(_prov_with_attr(prov_doc, ProvStart, activity_id))
+    end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
+    if start:
+        print("Started:", _prov_attr(PROV_ATTR_TIME, start))
 
-    for child in prov_doc.get_records(ProvStart):
-        if (PROV_ATTR_STARTER, activity_id) in child.attributes:
-            print("Step:", child)
+    started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
+    steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
+    for child in steps:
+        activity = _first(prov_doc.get_record(child))
+        label = _first(activity.get_attribute("prov:label")) or ""
+        start = _first(_prov_with_attr(prov_doc, ProvStart, child))
+        start_time = start and _prov_attr(PROV_ATTR_TIME, start) or "unknown"
+        end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
+        end_time = end and _prov_attr(PROV_ATTR_TIME, end) or "unknown"
+        
+        duration = "None"
+        if start_time and end_time:
+            duration = end_time - start_time
+
+        child_id = str(child.uri).replace("urn:uuid:", "")
+        
+        print("%s %s %s (%s) " % (start_time, child_id, label, duration))
+
+    if end:
+         print("Ended:", _prov_attr(PROV_ATTR_TIME, end))
 
     return Status.OK
 
