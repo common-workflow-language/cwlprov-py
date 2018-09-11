@@ -66,6 +66,11 @@ def parse_args(args=None):
         help="Path to CWLProv Research Object folder (default: .)",
         default=None
         )
+    parser.add_argument("--verbose", default=True, action='store_true',
+        help="More verbose logging")
+    parser.add_argument("--quiet", "-q", default=True, action='store_true',
+        help="No logging or hints")
+
     parser.add_argument("--hints", default=True, action='store_true',
         help="Show hints on cwlprov usage")
     parser.add_argument("--no-hints", default=True, action='store_false',
@@ -149,26 +154,28 @@ def validate_bag(bag, full_validation=False):
     profiles = _info_set(bag, "BagIt-Profile-Identifier")
     supported_ro = set(BAGIT_RO_PROFILES).intersection(profiles)
     if not supported_ro:
-        print("Missing BdBag profile: %s" % bag.path,
-            file=sys.stderr)
-        if full_validation:
+        if full_validation or not args.quiet:
+            print("Missing BdBag profile: %s" % bag.path,
+                file=sys.stderr)
+        if full_validation and args.hints and not args.quiet:
             print("Try adding to %s/bag-info.txt:" % bag.path)
             print("BagIt-Profile-Identifier: %s" % BAGIT_RO_PROFILES[0])
             return Status.MISSING_PROFILE
     # Check we have a manifest
     has_manifest = MANIFEST_JSON in bag.tagfile_entries()
     if not has_manifest:
-        print("Missing from tagmanifest: " + MANIFEST_JSON)
+        print("Missing from tagmanifest: " + MANIFEST_JSON, file=sys.stderr)
         return Status.MISSING_MANIFEST
     return Status.OK
 
-def validate_ro(ro, full_validation=False):
+def validate_ro(ro, full_validation=False, args=None):
     # If it has this prefix, it's probably OK
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if not cwlprov:
-        print("Missing CWLProv profile: %s" % ro.bag.path,
-            file=sys.stderr)
-        if full_validation:
+        if full_validation or not args.quiet: 
+            print("Missing CWLProv profile: %s" % ro.bag.path,
+                file=sys.stderr)
+        if full_validation and args.hints and not args.quiet:
             print("Try adding to %s/metadata/manifest.json:" % ro.bag.path)
             print('{\n  "id": "/",\n  "conformsTo", "%s",\n  ...\n}' %
                 CWLPROV_SUPPORTED[0])
@@ -177,8 +184,9 @@ def validate_ro(ro, full_validation=False):
     if cwlprov and not supported_cwlprov:
         # Probably a newer one this code don't support yet; it will 
         # probably be fine
-        print("Unsupported CWLProv version: %s" % cwlprov, file=sys.stderr)
-        if full_validation:
+        if full_validation or not args.quiet: 
+            print("Unsupported CWLProv version: %s" % cwlprov, file=sys.stderr)
+        if full_validation and args.hints and not args.quiet:
             print("Supported profiles:\n %s" %
                     "\n ".join(CWLPROV_SUPPORTED)
                  )
@@ -190,7 +198,8 @@ def _many(s):
 
 def info(ro, args):
     # About RO?
-    print(ro.bag.info.get("External-Description", "Research Object"))
+    if not args.quiet:
+        print(ro.bag.info.get("External-Description", "Research Object"))
     print("ID: %s" % ro.id)
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if cwlprov:
@@ -201,13 +210,16 @@ def info(ro, args):
     when = ro.bag.info.get("Bagging-Date")
     if when:
         print("Packaged: %s" % when)
-
     return Status.OK
 
 def who(ro, args): 
     # about RO?
-    print("Packaged By: %s" % _many(ro.createdBy) or "(unknown)")
-    print("Executed By: %s" % _many(ro.authoredBy) or "(unknown)")
+    createdBy = _many(ro.createdBy)
+    authoredBy = _many(ro.authoredBy)
+    if createdBy or not quiet:
+        print("Packaged By: %s" % createdBy or "(unknown)")
+    if authoredBy or not quiet:
+        print("Executed By: %s" % authoredBy or "(unknown)")
     return Status.OK
 
 def path(p, ro):
@@ -222,7 +234,8 @@ def _wf_id(ro, args):
         uuid = UUID(w.replace("urn:uuid:", ""))
         return (uuid.urn, uuid)
     except ValueError:
-        print("Warning: Invalid UUID %s" % w)
+        if not args.quiet:
+            print("Warning: Invalid UUID %s" % w, file=sys.stderr)
         return w, None
 
 def _first(iterable):
@@ -246,15 +259,16 @@ def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
     if not ro.provenance(uri):
-        print("No provenance found: %s" % name)
+        print("No provenance found: %s" % name, file=sys.stderr)
         return Status.UNKNOWN_RUN
 
-    prov_doc = _prov_document(ro, uri)
+    prov_doc = _prov_document(ro, uri, args)
     if not prov_doc:
         # Error already printed by _prov_document
         return Status.UNKNOWN_RUN
 
-    print("Workflow run:",  name)
+    if not args.quiet:
+        print("Workflow run:",  name)
     activity_id = Identifier(uri)
     activity = _first(prov_doc.get_record(activity_id))
     if not activity:
@@ -316,7 +330,7 @@ def run(ro, args):
     else:
         print("Flow %s <%s%s" % (name, label, w_duration))
 
-    if args.hints:
+    if args.hints and not args.quiet:
         print("Legend:")
         print("  > Workflow start")
         if have_nested:
@@ -344,7 +358,7 @@ def _prov_format(ro, uri, media_type):
         if media_type == ro.mediatype(prov):
             return ro.resolve_path(prov)
 
-def _prov_document(ro, uri):
+def _prov_document(ro, uri, args):
     # Preferred order
     candidates = ("xml", "json", "nt", "ttl", "rdf")
     # Note: Not all of these parse consistently with rdflib in py3
@@ -352,7 +366,8 @@ def _prov_document(ro, uri):
     for c in candidates:
         prov = _prov_format(ro, uri, MEDIA_TYPES.get(c))
         if prov:
-            print("Loading %s" % prov)
+            if args.verbose:
+                print("Loading %s" % prov)
             if c in rdf_candidates:
                 doc = ProvDocument.deserialize(source=prov, format="rdf", rdf_format=c)
             else:
@@ -404,7 +419,7 @@ def main(args=None):
         return invalid
     
     ro = ResearchObject(bag)
-    invalid = validate_ro(ro, full_validation)
+    invalid = validate_ro(ro, full_validation, args)
     if invalid:
         return invalid
 
