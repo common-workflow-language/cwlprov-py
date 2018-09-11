@@ -18,7 +18,7 @@ import sys
 import argparse
 from functools import partial
 
-
+import dateutil.parser
 
 from cwlprov.ro import ResearchObject
 
@@ -219,30 +219,34 @@ def run(ro, args):
     print(_first(activity.get_attribute("prov:label")) or "")
     
     start = _first(_prov_with_attr(prov_doc, ProvStart, activity_id))
-    end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
     if start:
-        print("Started:", _prov_attr(PROV_ATTR_TIME, start))
+        print("Workflow start:", _prov_attr(PROV_ATTR_TIME, start))
+    else:
+        print("Workflow start")
 
     started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
     steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
     for child in steps:
-        activity = _first(prov_doc.get_record(child))
-        label = _first(activity.get_attribute("prov:label")) or ""
-        start = _first(_prov_with_attr(prov_doc, ProvStart, child))
-        start_time = start and _prov_attr(PROV_ATTR_TIME, start) or "unknown"
-        end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
-        end_time = end and _prov_attr(PROV_ATTR_TIME, end) or "unknown"
+        c_activity = _first(prov_doc.get_record(child))
+        c_label = _first(c_activity.get_attribute("prov:label")) or ""
+        c_start = _first(_prov_with_attr(prov_doc, ProvStart, child))
+        c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
+        c_end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
+        c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
         
-        duration = "None"
-        if start_time and end_time:
-            duration = end_time - start_time
+        c_duration = None
+        if c_start_time and c_end_time:
+            c_duration = c_end_time - c_start_time
 
-        child_id = str(child.uri).replace("urn:uuid:", "")
-        
-        print("%s %s %s (%s) " % (start_time, child_id, label, duration))
+        c_id = str(child.uri).replace("urn:uuid:", "")
+        c_start_time = c_start_time or "(unknown start time)     "
+        print("%s  %s  %s  (%s) " % (c_start_time, c_id, c_label, c_duration or "unknown duration"))
 
+    end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
     if end:
-         print("Ended:", _prov_attr(PROV_ATTR_TIME, end))
+         print("Workflow end:", _prov_attr(PROV_ATTR_TIME, end))
+    else:
+        print("Workflow end")
 
     return Status.OK
 
