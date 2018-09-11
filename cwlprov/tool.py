@@ -66,7 +66,7 @@ def parse_args(args=None):
         help="Path to CWLProv Research Object folder (default: .)",
         default=None
         )
-    parser.add_argument("--verbose", default=True, action='store_true',
+    parser.add_argument("--verbose", default=False, action='store_true',
         help="More verbose logging")
     parser.add_argument("--quiet", "-q", default=True, action='store_true',
         help="No logging or hints")
@@ -249,12 +249,6 @@ def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACT
 def _prov_attr(attr, elem):
     return _first(elem.get_attribute(attr))
 
-def inputs(ro, args):
-    pass
-
-def outputs(ro, args):
-    pass    
-
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
@@ -284,7 +278,7 @@ def run(ro, args):
     end_time = end and _prov_attr(PROV_ATTR_TIME, end)
     
     PADDING = " " * 26  # len("2018-08-08 22:44:06.573330")
-
+    
     w_duration = ""
     if args.duration:
         if start_time and end_time:
@@ -292,11 +286,21 @@ def run(ro, args):
         else:
             w_duration = " (unknown duration)"
 
-    if args.start:
-        print("%s  Flow %s >%s%s" % (start_time or PADDING, name, label, w_duration))
-    else:
-        print("Flow %s >%s%s" % (name, label, w_duration))
+    padded_start_time = ""
+    if args.end and args.start:
+        # 2 columns
+        padded_start_time = "%s %s " % (start_time, PADDING)        
+    elif args.end or args.start:
+        # 1 column, we don't care which
+        padded_start_time = "%s " % (start_time)
+    print("%sFlow %s >%s%s" % (padded_start_time, name, label, w_duration))
 
+    # inputs
+    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
+    for u in usage:
+        print(u)
+
+    # steps
     have_nested = False
     if args.steps:
         started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
@@ -322,13 +326,16 @@ def run(ro, args):
             have_nested = have_nested or c_provenance
             c_id = str(child.uri).replace("urn:uuid:", "")
             c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
-            c_end_time = args.end and "%s  " % (c_end_time or PADDING)
-            print("%s%s Step %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
+            c_end_time = args.end and "%s " % (c_end_time or PADDING)
+            print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
 
-    if args.end or args.start:
-        print("%s  Flow %s <%s%s" % (end_time or PADDING, name, label, w_duration))
-    else:
-        print("Flow %s <%s%s" % (name, label, w_duration))
+    # end
+    padded_end_time = ""
+    if args.end and args.start:
+        padded_end_time = "%s %s " % (PADDING, end_time)        
+    elif args.end or args.start:
+        padded_end_time = "%s " % (end_time)
+    print("%sFlow %s <%s%s" % (padded_end_time, name, label, w_duration))
 
     if args.hints and not args.quiet:
         print("Legend:")
