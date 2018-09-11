@@ -102,7 +102,7 @@ class ResearchObject:
         if arcp.is_arcp_uri(str(uri_path)):
             uri = arcp.parse_arcp(uri_path)
             # Ensure same base URI meaning this bagit
-            assert urllib.parse.urljoin(uri, "/") == self.root_uri
+            assert urllib.parse.urljoin(uri_path, "/") == self.root_uri
             # Strip initial / so path is relative
             path = pathlib.PurePosixPath(uri.path[1:])
         else:            
@@ -116,7 +116,7 @@ class ResearchObject:
         # ensure it did not climb out (will throw ValueError if not)
         assert absolute.relative_to(self.root_path)
         return absolute
-
+    
     def _load_manifest(self):
         manifest_file = self.resolve_path(MANIFEST_PATH)
         base_arcp = self.resolve_uri(MANIFEST_PATH)
@@ -173,6 +173,16 @@ class ResearchObject:
         return next((a.hasTarget for a in self.annotations_with_content(path, uri)
                    if a.motivatedBy == OA.describing), None)
 
+    def provenance(self, path=None, uri=None):
+        prov = set()
+        for a in self.annotations_about(path, uri):
+            if a.motivatedBy == PROV.has_provenance:
+                return a.hasBodies
+
+    def mediatype(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        return next(map(str, self.manifest.objects(resource, DC["format"])))
+
     @property
     def workflow_id(self):
         return self.describes(uri=self.id)
@@ -186,9 +196,18 @@ class Annotation:
     def hasBody(self):
         return next(self._graph.objects(self._id, OA.hasBody), None)
 
+    @property
+    def hasBodies(self):
+        return set(self._graph.objects(self._id, OA.hasBody))
+
     @property    
     def hasTarget(self):
         return next(self._graph.objects(self._id, OA.hasTarget), None)
+
+    @property    
+    def hasTargets(self):
+        return set(self._graph.objects(self._id, OA.hasTarget))
+
 
     @property    
     def motivatedBy(self):

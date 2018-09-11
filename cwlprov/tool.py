@@ -23,10 +23,13 @@ from cwlprov.ro import ResearchObject
 import arcp
 import bagit
 
+from uuid import UUID
 import bdbag
 from bdbag.bdbagit import BDBag
 import posixpath
 import pathlib
+from pathlib import Path
+import shutil
 
 from enum import IntEnum
 
@@ -51,6 +54,8 @@ class Status(IntEnum):
     INVALID_BAG = 3
     MISSING_PROFILE = 4
     UNSUPPORTED_CWLPROV_VERSION = 5
+    UNKNOWN_RUN = 6
+    UNKNOWN_FORMAT = 7
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov')
@@ -61,8 +66,14 @@ def parse_args(args=None):
     subparsers = parser.add_subparsers(title='commands', dest="cmd")
     parser_validate = subparsers.add_parser('validate', help='validate the CWLProv RO')
     parser_info = subparsers.add_parser('info', help='CWLProv RO')
+    parser_prov = subparsers.add_parser('prov', help='show provenance')
+    parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
+    parser_prov.add_argument("--format", default="files", help="Output in PROV format (default: files)")
+    parser_prov.add_argument("--formats", default=False, 
+        action='store_true', help="List available PROV formats")
+
     parser_run = subparsers.add_parser('run', help='show workflow execution')
-    parser_run.add_argument("id", default=None, nargs="?")
+    parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_who = subparsers.add_parser('who', help='who ran the workflow')
 
     return parser.parse_args(args)
@@ -156,15 +167,75 @@ def who(ro, args):
     # about RO?
     print("Packaged By: %s" % many(ro.createdBy) or "(unknown)")
     print("Executed By: %s" % many(ro.authoredBy) or "(unknown)")
-
     return Status.OK
+
+def path(p, ro):
+    p = ro.resolve_path(str(p))
+    return Path(p).relative_to(Path().absolute())
+
+def _wf_id(ro, args):
+    w = args.id or ro.workflow_id
+    uuid = None
+    # ensure consistent UUID URIs
+    try:
+        uuid = UUID(w.replace("urn:uuid:", ""))
+        return (uuid.urn, uuid)
+    except ValueError:
+        print("Warning: Invalid UUID %s" % w)
+        return w, None
 
 def run(ro, args):
-    w = args.id or ro.workflow_id
-    print("Run: %s" % w)
-
+    uri,uuid = _wf_id(ro, args)
+    name = str(uuid or uri)
+    if ro.provenance(uri):
+        print("Workflow run: %s" % name)
+        print("Provenance found: cwlprov prov %s" % name)
+    else:
+        print("No provenance found")
 
     return Status.OK
+
+MEDIA_TYPES = {
+    "txt": 'text/plain; charset="UTF-8"',
+    "ttl": 'text/turtle; charset="UTF-8"',
+    "rdf": 'application/rdf+xml',
+    "json": 'application/json',
+    "jsonld": 'application/ld+json',
+    "xml": 'application/xml',
+    "cwl": 'text/x+yaml; charset="UTF-8"',
+    "provn": 'text/provenance-notation; charset="UTF-8"',
+    "nt": 'application/n-triples',
+}
+EXTENSIONS = dict((v,k) for (k,v) in MEDIA_TYPES.items())
+
+def prov(ro, args):
+    uri,uuid = _wf_id(ro, args)
+    name = str(uuid or uri)
+
+    if args.format == "files":
+        for prov in ro.provenance(uri):
+            if args.formats:
+                format = ro.mediatype(prov) or ""
+                format = EXTENSIONS.get(format, format)
+                print("%s %s" % (format, (path(prov, ro))))
+            else:
+                print("%s" % path(prov, ro))
+        return Status.OK
+    else:
+        media_type = MEDIA_TYPES.get(args.format, args.format)
+        for prov in ro.provenance(uri):
+            if media_type == ro.mediatype(prov):
+                p = ro.resolve_path(prov)
+                with p.open() as f:
+                    shutil.copyfileobj(f, sys.stdout)
+                    #sys.stdout.write(f.read())
+                print() # extra newline, OK for the PROV fileformats
+                return Status.OK
+
+        print("Unrecognized format: %s" % args.format)
+        return Status.UNKNOWN_FORMAT
+
+
 
 def main(args=None):
     # type: (...) -> None
@@ -197,7 +268,8 @@ def main(args=None):
     COMMANDS = {
         "info": info,
         "run": run,
-        "who": who
+        "who": who,
+        "prov": prov,
     }
     
     cmd = COMMANDS.get(args.cmd)
