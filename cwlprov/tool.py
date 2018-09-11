@@ -23,7 +23,7 @@ from cwlprov.ro import ResearchObject
 # TODO: Move any use these to cwlprov.*
 import arcp
 import bagit
-
+from prov.identifier import Identifier
 from uuid import UUID
 import bdbag
 from bdbag.bdbagit import BDBag
@@ -31,6 +31,7 @@ import posixpath
 import pathlib
 from pathlib import Path
 import shutil
+from prov.model import ProvDocument
 
 from enum import IntEnum
 
@@ -185,14 +186,23 @@ def _wf_id(ro, args):
         print("Warning: Invalid UUID %s" % w)
         return w, None
 
+def _first(iterable):
+    return next(iter(iterable), None)
+
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
-    if ro.provenance(uri):
-        print("Workflow run: %s" % name)
-        print("Provenance found: cwlprov prov %s" % name)
+    prov_doc = _prov_document(ro, uri)
+    if prov_doc:
+        print("Workflow run:",  name)
+        activity_id = Identifier(uri)
+        activity = _first(prov_doc.get_record(activity_id))
+        print(_first(activity.get_attribute("prov:label")) or "")
+        print("Started:", _first(activity.get_attribute("prov:startTime")) or "(unknown)")
+        print("Ended:", _first(activity.get_attribute("prov:endTime")) or "(unknown)")
+
     else:
-        print("No provenance found")
+        print("No provenance found: %s" % name)
 
     return Status.OK
 
@@ -213,6 +223,24 @@ def _prov_format(ro, uri, media_type):
     for prov in ro.provenance(uri):
         if media_type == ro.mediatype(prov):
             return ro.resolve_path(prov)
+
+def _prov_document(ro, uri):
+    # Preferred order
+    candidates = ("xml", "json", "nt", "ttl", "rdf")
+    # Note: Not all of these parse consistently with rdflib in py3
+    rdf_candidates = ("ttl", "nt", "rdf", "jsonld")
+    for c in candidates:
+        prov = _prov_format(ro, uri, MEDIA_TYPES.get(c))
+        if prov:
+            print("Loading %s" % prov)
+            if c in rdf_candidates:
+                doc = ProvDocument.deserialize(source=prov, format="rdf", rdf_format=c)
+            else:
+                doc = ProvDocument.deserialize(source=prov, format=c)
+            return doc.unified()
+    print("No PROV compatible format found for %s" % uri, file=sys.stderr)
+    return None
+
 
 def prov(ro, args):
     uri,uuid = _wf_id(ro, args)
