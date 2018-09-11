@@ -17,6 +17,7 @@
 import sys
 import argparse
 
+
 from cwlprov.ro import ResearchObject
 
 # TODO: Move any use these to cwlprov.*
@@ -208,6 +209,11 @@ MEDIA_TYPES = {
 }
 EXTENSIONS = dict((v,k) for (k,v) in MEDIA_TYPES.items())
 
+def _prov_format(ro, uri, media_type):
+    for prov in ro.provenance(uri):
+        if media_type == ro.mediatype(prov):
+            return ro.resolve_path(prov)
+
 def prov(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
@@ -220,22 +226,16 @@ def prov(ro, args):
                 print("%s %s" % (format, (path(prov, ro))))
             else:
                 print("%s" % path(prov, ro))
-        return Status.OK
     else:
         media_type = MEDIA_TYPES.get(args.format, args.format)
-        for prov in ro.provenance(uri):
-            if media_type == ro.mediatype(prov):
-                p = ro.resolve_path(prov)
-                with p.open() as f:
-                    shutil.copyfileobj(f, sys.stdout)
-                    #sys.stdout.write(f.read())
-                print() # extra newline, OK for the PROV fileformats
-                return Status.OK
-
-        print("Unrecognized format: %s" % args.format)
-        return Status.UNKNOWN_FORMAT
-
-
+        prov = _prov_format(ro, uri, media_type)
+        if not prov:
+            print("Unrecognized format: %s" % args.format)
+            return Status.UNKNOWN_FORMAT
+        with prov.open(encoding="UTF-8") as f:
+            shutil.copyfileobj(f, sys.stdout)
+            print() # workaround for missing trailing newline
+    return Status.OK
 
 def main(args=None):
     # type: (...) -> None
