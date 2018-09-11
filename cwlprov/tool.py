@@ -192,19 +192,27 @@ def _first(iterable):
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
-    prov_doc = _prov_document(ro, uri)
-    if prov_doc:
-        print("Workflow run:",  name)
-        activity_id = Identifier(uri)
-        activity = _first(prov_doc.get_record(activity_id))
-        print(_first(activity.get_attribute("prov:label")) or "")
-        print("Started:", _first(activity.get_attribute("prov:startTime")) or "(unknown)")
-        print("Ended:", _first(activity.get_attribute("prov:endTime")) or "(unknown)")
-
-    else:
+    if not ro.provenance(uri):
         print("No provenance found: %s" % name)
+        return Status.UNKNOWN_RUN
+
+    prov_doc = _prov_document(ro, uri)
+    if not prov_doc:
+        # Error already printed by _prov_document
+        return Status.UNKNOWN_RUN
+
+    print("Workflow run:",  name)
+    activity_id = Identifier(uri)
+    activity = _first(prov_doc.get_record(activity_id))
+    if not activity:
+        print("Provenance does not describe activity %s" % uri, file=sys.stderr)
+        return Status.UNKNOWN_RUN
+    print(_first(activity.get_attribute("prov:label")) or "")
+    print("Started:", _first(activity.get_attribute("prov:startTime")) or "(unknown)")
+    print("Ended:", _first(activity.get_attribute("prov:endTime")) or "(unknown)")
 
     return Status.OK
+
 
 MEDIA_TYPES = {
     "txt": 'text/plain; charset="UTF-8"',
@@ -220,7 +228,7 @@ MEDIA_TYPES = {
 EXTENSIONS = dict((v,k) for (k,v) in MEDIA_TYPES.items())
 
 def _prov_format(ro, uri, media_type):
-    for prov in ro.provenance(uri):
+    for prov in (ro.provenance(uri) or ()):
         if media_type == ro.mediatype(prov):
             return ro.resolve_path(prov)
 
