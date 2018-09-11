@@ -71,12 +71,19 @@ def parse_args(args=None):
     parser_info = subparsers.add_parser('info', help='CWLProv RO')
     parser_prov = subparsers.add_parser('prov', help='show provenance')
     parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
-    parser_prov.add_argument("--format", default="files", help="Output in PROV format (default: files)")
-    parser_prov.add_argument("--formats", default=False, 
+    parser_prov.add_argument("--format", "-f", default="files", help="Output in PROV format (default: files)")
+    parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
     parser_run = subparsers.add_parser('run', help='show workflow execution')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
+    parser_run.add_argument("--step", "-s", default=None, 
+        help="Show only step (UUID)")
+    parser_run.add_argument("--inputs", "-i", default=False, 
+        action='store_true', help="Show inputs")
+    parser_run.add_argument("--outputs", "-o", default=False, 
+        action='store_true', help="Show outputs")
+
     parser_who = subparsers.add_parser('who', help='who ran the workflow')
 
     return parser.parse_args(args)
@@ -198,6 +205,12 @@ def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACT
 def _prov_attr(attr, elem):
     return _first(elem.get_attribute(attr))
 
+def inputs(ro, args):
+    pass
+
+def outputs(ro, args):
+    pass    
+
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
@@ -226,6 +239,7 @@ def run(ro, args):
 
     started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
     steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
+    have_nested = False
     for child in steps:
         c_activity = _first(prov_doc.get_record(child))
         c_label = _first(c_activity.get_attribute("prov:label")) or ""
@@ -238,10 +252,15 @@ def run(ro, args):
         if c_start_time and c_end_time:
             c_duration = c_end_time - c_start_time
 
+
+        c_provenance = ro.provenance(child.uri)
+        have_nested = have_nested or c_provenance
         c_id = str(child.uri).replace("urn:uuid:", "")
         c_start_time = c_start_time or "(unknown start time)     "
-        print("%s  %s  %s  (%s) " % (c_start_time, c_id, c_label, c_duration or "unknown duration"))
+        print("%s  %s %s %s  (%s) " % (c_start_time, c_id, c_provenance and "*" or " ", c_label, c_duration or "unknown duration"))
 
+    if have_nested:
+        print(" * indicates nested provenance. Use run UUID as argument to 'cwlprov prov' or 'cwlprov run'")
     end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
     if end:
          print("Workflow end:", _prov_attr(PROV_ATTR_TIME, end))
@@ -342,7 +361,7 @@ def main(args=None):
         "info": info,
         "run": run,
         "who": who,
-        "prov": prov,
+        "prov": prov
     }
     
     cmd = COMMANDS.get(args.cmd)
