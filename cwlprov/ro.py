@@ -44,6 +44,7 @@ def _resource_as_path(path):
 
 # RDF namespaces we might query for later
 ORE = Namespace("http://www.openarchives.org/ore/terms/")
+BUNDLE = Namespace("http://purl.org/wf4ever/bundle#")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 RO = Namespace("http://purl.org/wf4ever/ro#")
 ROTERMS = Namespace("http://purl.org/wf4ever/roterms#")
@@ -181,7 +182,11 @@ class ResearchObject:
 
     def mediatype(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
-        return next(map(str, self.manifest.objects(resource, DC["format"])))
+        return next(map(str, self.manifest.objects(resource, DC["format"])), None)
+
+    def bundledAs(self, path=None, uri=None):
+        resource = self._uriref(path=path, uri=uri)
+        return next(map(str, self.manifest.objects(resource, BUNDLE["bundledAs"])), None)
 
     @property
     def workflow_id(self):

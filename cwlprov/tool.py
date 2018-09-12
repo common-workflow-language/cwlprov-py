@@ -78,17 +78,33 @@ def parse_args(args=None):
     parser.add_argument("--no-hints", default=True, action='store_false',
         dest="hints", help="Do not show hints")
     subparsers = parser.add_subparsers(title='commands', dest="cmd")
+
     parser_validate = subparsers.add_parser('validate', help='validate the CWLProv RO')
     parser_info = subparsers.add_parser('info', help='CWLProv RO')
+    parser_who = subparsers.add_parser('who', help='who ran the workflow')    
     parser_prov = subparsers.add_parser('prov', help='show provenance')
     parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_prov.add_argument("--format", "-f", default="files", help="Output in PROV format (default: files)")
     parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
-    parser_run = subparsers.add_parser('inputs', help='show workflow/step inputs')
-    parser_run.add_argument("--run", default=None, help="workflow run UUID")
-    parser_run.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+    parser_input = subparsers.add_parser('inputs', help='show workflow/step inputs')
+    parser_input.add_argument("--run", default=None, help="workflow run UUID")
+    parser_input.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+    parser_input.add_argument("--parameters",  default=True, action='store_true',
+        help="Show parameter names")
+    parser_input.add_argument("--no-parameters", default=True, action='store_false',
+        dest="parameters", help="Do not show parameter names")
+
+
+    parser_output = subparsers.add_parser('outputs', help='show workflow/step outputs')
+    parser_output.add_argument("--run", default=None, help="workflow run UUID")
+    parser_output.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+    parser_output.add_argument("--parameters",  default=True, action='store_true',
+        help="Show parameter names")
+    parser_output.add_argument("--no-parameters", default=True, action='store_false',
+        dest="parameters", help="Do not show parameter names")
+
 
     parser_run = subparsers.add_parser('run', help='show workflow execution')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
@@ -125,8 +141,6 @@ def parse_args(args=None):
         action='store_true', help="Show inputs")
     parser_run.add_argument("--outputs", "-o", default=False, 
         action='store_true', help="Show outputs")
-
-    parser_who = subparsers.add_parser('who', help='who ran the workflow')
 
     return parser.parse_args(args)
 
@@ -305,6 +319,93 @@ def inputs(ro, args):
     a_uri,a_uuid,a_name = _wf_id(ro, args)
     if not ro.provenance(wf_uri):
         if args.run or args.verbose:
+            print("No provenance found for: %s" % wf_name, file=sys.stderr)
+        if args.run:
+            # We'll need to give up
+            return Status.UNKNOWN_RUN
+        else:
+            if args.verbose:
+                print("Assuming primary provenance --run %s" % ro.workflow_id)
+            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
+            if not ro.provenance(wf_uri):
+                print("No provenance found for: %s" % wf_name, file=sys.stderr)
+                return Status.UNKNOWN_RUN
+
+    prov_doc = _prov_document(ro, wf_uri, args)
+    if not prov_doc:
+        # Error already printed by _prov_document
+        return Status.UNKNOWN_RUN
+
+    activity_id = Identifier(a_uri)
+    activity = _first(prov_doc.get_record(activity_id))
+    if not activity:
+        print("Provenance %s does not describe step %s" % (wf_name, a_uri), file=sys.stderr)
+        if not args.run and args.hints:
+            print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
+        return Status.UNKNOWN_RUN
+    if args.verbose:
+        print(activity)
+    if args.verbose:
+        if wf_uri != a_uri:
+            print("Inputs for step %s in workflow %s" % (a_name, wf_name))
+        else:
+            print("Inputs for workflow %s" % (wf_name))
+
+    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
+    for u in usage:
+        if args.verbose:
+            print(u)
+        entity_id = _prov_attr(PROV_ATTR_ENTITY, u)
+        role = _prov_attr(PROV_ROLE, u)
+        if args.parameters:
+            if isinstance(role, QualifiedName):
+                role_name = role.localpart
+            else:
+                role_name = str(role)
+            print("Input %s:" % role_name) 
+        time = _prov_attr(PROV_ATTR_TIME, u)
+        entity = _first(prov_doc.get_record(entity_id))
+        if not entity:
+            print("No provenance for used entity %s" % entity_id, file=sys.stderr)
+            continue
+
+        if args.verbose:
+            print(entity)
+
+        file_candidates = [entity]
+        general_id = None
+        specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
+        if specializations:
+            specialization = _first(specializations)
+            if args.verbose:
+                print(specialization)
+            general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
+            generalEntity = general_id and _first(prov_doc.get_record(general_id))
+            if args.verbose and generalEntity:
+                print(generalEntity)
+            file_candidates.append(generalEntity)
+        
+        for file_candidate in file_candidates:
+            bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
+            if not bundled:
+                continue
+            if args.verbose:
+                print(bundled)
+            bundled_path = path(bundled, ro)
+            print(bundled_path)
+            break
+
+        # Perhaps it has prov:value ? 
+        value = _prov_attr(PROV_VALUE, entity)
+        if not value is None: # might be False
+            print(value)        
+
+
+def outputs(ro, args):
+    wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
+    a_uri,a_uuid,a_name = _wf_id(ro, args)
+    if not ro.provenance(wf_uri):
+        if args.run or args.verbose:
             print("No provenance found for: %s in" % wf_name, file=sys.stderr)
         if args.run:
             # We'll need to give up
@@ -333,10 +434,59 @@ def inputs(ro, args):
         print(activity)
     if args.verbose:
         if wf_uri != a_uri:
-            print("Inputs for step %s in workflow %s" % (a_name, wf_name))
+            print("Outputs for step %s in workflow %s" % (a_name, wf_name))
         else:
-            print("Inputs for workflow %s" % (wf_name))
-    
+            print("Outputs for workflow %s" % (wf_name))
+
+    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
+    for g in gen:
+        if args.verbose:
+            print(g)
+        entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
+        role = _prov_attr(PROV_ROLE, g)
+        if args.parameters:
+            if isinstance(role, QualifiedName):
+                role_name = role.localpart
+            else:
+                role_name = str(role)
+            print("Input %s:" % role_name) 
+        time = _prov_attr(PROV_ATTR_TIME, g)
+        entity = _first(prov_doc.get_record(entity_id))
+        if not entity:
+            print("No provenance for generated entity %s" % entity_id, file=sys.stderr)
+            continue
+
+        if args.verbose:
+            print(entity)
+
+        file_candidates = [entity]
+        general_id = None
+        specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
+        if specializations:
+            specialization = _first(specializations)
+            if args.verbose:
+                print(specialization)
+            general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
+            generalEntity = general_id and _first(prov_doc.get_record(general_id))
+            if args.verbose and generalEntity:
+                print(generalEntity)
+            file_candidates.append(generalEntity)
+        
+        for file_candidate in file_candidates:
+            bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
+            if not bundled:
+                continue
+            if args.verbose:
+                print(bundled)
+            bundled_path = path(bundled, ro)
+            print(bundled_path)
+            break
+
+        # Perhaps it has prov:value ? 
+        value = _prov_attr(PROV_VALUE, entity)
+        if not value is None: # might be False
+            print(value)        
+
 
 
 def run(ro, args):
@@ -499,7 +649,7 @@ def prov(ro, args):
     uri,uuid,name = _wf_id(ro, args)
 
     if args.format == "files":
-        for prov in ro.provenance(uri):
+        for prov in ro.provenance(uri) or ():
             if args.formats:
                 format = ro.mediatype(prov) or ""
                 format = EXTENSIONS.get(format, format)
@@ -550,7 +700,9 @@ def main(args=None):
         "run": run,
         "who": who,
         "prov": prov,
-        "inputs": inputs
+        "inputs": inputs,
+        "outputs": outputs,
+
     }
     
     cmd = COMMANDS.get(args.cmd)
