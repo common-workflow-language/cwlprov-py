@@ -246,7 +246,7 @@ def path(p, ro):
     p = ro.resolve_path(str(p))
     return Path(p).relative_to(Path().absolute())
 
-def _as_uuid(w):
+def _as_uuid(w, args):
     try:
         uuid = UUID(w.replace("urn:uuid:", ""))
         return (uuid.urn, uuid, str(uuid))
@@ -259,7 +259,7 @@ def _as_uuid(w):
 def _wf_id(ro, args, run=None):
     w = run or args.id or ro.workflow_id
     # ensure consistent UUID URIs
-    return _as_uuid(w)
+    return _as_uuid(w, args)
 
 def _first(iterable):
     return next(iter(iterable), None)
@@ -326,7 +326,7 @@ def inputs(ro, args):
         else:
             if args.verbose:
                 print("Assuming primary provenance --run %s" % ro.workflow_id)
-            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
+            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
             if not ro.provenance(wf_uri):
                 print("No provenance found for: %s" % wf_name, file=sys.stderr)
                 return Status.UNKNOWN_RUN
@@ -357,7 +357,7 @@ def inputs(ro, args):
             print(u)
         entity_id = _prov_attr(PROV_ATTR_ENTITY, u)
         role = _prov_attr(PROV_ROLE, u)
-        if args.parameters:
+        if args.parameters and not args.quiet:
             if isinstance(role, QualifiedName):
                 role_name = role.localpart
             else:
@@ -413,7 +413,7 @@ def outputs(ro, args):
         else:
             if args.verbose:
                 print("Assuming primary run --run %s" % ro.workflow_id)
-            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
+            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
             if not ro.provenance(wf_uri):
                 print("No provenance found for: %s" % wf_name, file=sys.stderr)
                 return Status.UNKNOWN_RUN
@@ -444,12 +444,12 @@ def outputs(ro, args):
             print(g)
         entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
         role = _prov_attr(PROV_ROLE, g)
-        if args.parameters:
+        if args.parameters and not args.quiet:
             if isinstance(role, QualifiedName):
                 role_name = role.localpart
             else:
                 role_name = str(role)
-            print("Input %s:" % role_name) 
+            print("Output %s:" % role_name) 
         time = _prov_attr(PROV_ATTR_TIME, g)
         entity = _first(prov_doc.get_record(entity_id))
         if not entity:
