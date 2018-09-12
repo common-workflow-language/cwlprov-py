@@ -49,6 +49,8 @@ CWLPROV_SUPPORTED = (
 
 MANIFEST_JSON = posixpath.join("metadata", "manifest.json")
 
+TIME_PADDING = " " * 26  # len("2018-08-08 22:44:06.573330")
+
 class Status(IntEnum):
     """Exit codes from main()"""
     OK = 0
@@ -262,7 +264,7 @@ def _usage(activity_id, prov_doc, args):
         time = _prov_attr(PROV_ATTR_TIME, u)
         if args.start and args.end:
             # 2 col timestamps
-            time_part = "%s %s " % (time or "(unknown usage time)     ", PADDING)
+            time_part = "%s %s " % (time or "(unknown usage time)     ", TIME_PADDING)
         elif args.start or args.end:
             # 1 col timestamp
             time_part = "%s " % (time or "(unknown usage time)     ")
@@ -283,7 +285,7 @@ def _generation(activity_id, prov_doc, args):
         time = _prov_attr(PROV_ATTR_TIME, g)
         if args.start and args.end:
             # 2 col timestamps
-            time_part = "%s %s " % (PADDING, time or "(unknown generation time)")
+            time_part = "%s %s " % (TIME_PADDING, time or "(unknown generation time)")
         elif args.start or args.end:
             # 1 col timestamp
             time_part = "%s " % (time or "(unknown generation time)")
@@ -295,7 +297,9 @@ def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
     if not ro.provenance(uri):
-        print("No provenance found: %s" % name, file=sys.stderr)
+        print("No provenance found for: %s" % name, file=sys.stderr)
+        #if args.hints:
+        #    print("Try --search to examine all provenance files")
         return Status.UNKNOWN_RUN
 
     prov_doc = _prov_document(ro, uri, args)
@@ -303,7 +307,7 @@ def run(ro, args):
         # Error already printed by _prov_document
         return Status.UNKNOWN_RUN
 
-    if not args.quiet:
+    if args.verbose:
         print("Workflow run:",  name)
     activity_id = Identifier(uri)
     activity = _first(prov_doc.get_record(activity_id))
@@ -321,25 +325,18 @@ def run(ro, args):
     end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
     end_time = end and _prov_attr(PROV_ATTR_TIME, end)
     
-    PADDING = " " * 26  # len("2018-08-08 22:44:06.573330")
     
-    w_duration = ""
-    if args.duration:
-        if start_time and end_time:
-            w_duration = " (%s)" % (end_time - start_time)
-        else:
-            w_duration = " (unknown duration)"
 
     if args.verbose and start:
         print(start)
     padded_start_time = ""
     if args.end and args.start:
         # 2 columns
-        padded_start_time = "%s %s " % (start_time, PADDING)        
+        padded_start_time = "%s %s " % (start_time, TIME_PADDING)        
     elif args.end or args.start:
         # 1 column, we don't care which
         padded_start_time = "%s " % (start_time)
-    print("%sFlow %s [%s%s" % (padded_start_time, name, label, w_duration))
+    print("%sFlow %s [%s" % (padded_start_time, name, label))
 
     # inputs
     _usage(activity_id, prov_doc, args)
@@ -373,7 +370,7 @@ def run(ro, args):
             have_nested = have_nested or c_provenance
             c_id = str(child.uri).replace("urn:uuid:", "")
             c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
-            c_end_time = args.end and "%s " % (c_end_time or PADDING)
+            c_end_time = args.end and "%s " % (c_end_time or TIME_PADDING)
             print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
             _usage(child, prov_doc, args)
             _generation(child, prov_doc, args)
@@ -389,9 +386,17 @@ def run(ro, args):
     # end
     padded_end_time = ""
     if args.end and args.start:
-        padded_end_time = "%s %s " % (PADDING, end_time)        
+        padded_end_time = "%s %s " % (TIME_PADDING, end_time)        
     elif args.end or args.start:
         padded_end_time = "%s " % (end_time)
+
+    w_duration = ""
+    if args.duration:
+        if start_time and end_time:
+            w_duration = " (%s)" % (end_time - start_time)
+        else:
+            w_duration = " (unknown duration)"
+
     print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
 
     if args.hints and not args.quiet:
