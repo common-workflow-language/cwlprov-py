@@ -86,6 +86,10 @@ def parse_args(args=None):
     parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
+    parser_run = subparsers.add_parser('inputs', help='show workflow/step inputs')
+    parser_run.add_argument("--run", default=None, help="workflow run UUID")
+    parser_run.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+
     parser_run = subparsers.add_parser('run', help='show workflow execution')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_run.add_argument("--step", "-s", default=None, 
@@ -228,17 +232,20 @@ def path(p, ro):
     p = ro.resolve_path(str(p))
     return Path(p).relative_to(Path().absolute())
 
-def _wf_id(ro, args):
-    w = args.id or ro.workflow_id
-    uuid = None
-    # ensure consistent UUID URIs
+def _as_uuid(w):
     try:
         uuid = UUID(w.replace("urn:uuid:", ""))
-        return (uuid.urn, uuid)
+        return (uuid.urn, uuid, str(uuid))
     except ValueError:
         if not args.quiet:
             print("Warning: Invalid UUID %s" % w, file=sys.stderr)
-        return w, None
+        # return -as-is
+        return w, None, str(w)
+
+def _wf_id(ro, args, run=None):
+    w = run or args.id or ro.workflow_id
+    # ensure consistent UUID URIs
+    return _as_uuid(w)
 
 def _first(iterable):
     return next(iter(iterable), None)
@@ -293,9 +300,47 @@ def _generation(activity_id, prov_doc, args):
             time_part = ""        
         print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
 
+def inputs(ro, args):
+    wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
+    a_uri,a_uuid,a_name = _wf_id(ro, args)
+    if not ro.provenance(wf_uri):
+        if args.run or args.verbose:
+            print("No provenance found for: %s in" % wf_name, file=sys.stderr)
+        if args.run:
+            # We'll need to give up
+            return Status.UNKNOWN_RUN
+        else:
+            if args.verbose:
+                print("Assuming primary run --run %s" % ro.workflow_id)
+            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
+            if not ro.provenance(wf_uri):
+                print("No provenance found for: %s" % wf_name, file=sys.stderr)
+                return Status.UNKNOWN_RUN
+
+    prov_doc = _prov_document(ro, wf_uri, args)
+    if not prov_doc:
+        # Error already printed by _prov_document
+        return Status.UNKNOWN_RUN
+
+    activity_id = Identifier(a_uri)
+    activity = _first(prov_doc.get_record(activity_id))
+    if not activity:
+        print("Provenance %s does not describe step %s" % (wf_name, a_uri), file=sys.stderr)
+        if not args.run and args.hints:
+            print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
+        return Status.UNKNOWN_RUN
+    if args.verbose:
+        print(activity)
+    if args.verbose:
+        if wf_uri != a_uri:
+            print("Inputs for step %s in workflow %s" % (a_name, wf_name))
+        else:
+            print("Inputs for workflow %s" % (wf_name))
+    
+
+
 def run(ro, args):
-    uri,uuid = _wf_id(ro, args)
-    name = str(uuid or uri)
+    uri,uuid,name = _wf_id(ro, args)
     if not ro.provenance(uri):
         print("No provenance found for: %s" % name, file=sys.stderr)
         #if args.hints:
@@ -451,8 +496,7 @@ def _prov_document(ro, uri, args):
 
 
 def prov(ro, args):
-    uri,uuid = _wf_id(ro, args)
-    name = str(uuid or uri)
+    uri,uuid,name = _wf_id(ro, args)
 
     if args.format == "files":
         for prov in ro.provenance(uri):
@@ -505,7 +549,8 @@ def main(args=None):
         "info": info,
         "run": run,
         "who": who,
-        "prov": prov
+        "prov": prov,
+        "inputs": inputs
     }
     
     cmd = COMMANDS.get(args.cmd)
