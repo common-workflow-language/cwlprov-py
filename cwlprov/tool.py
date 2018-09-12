@@ -66,9 +66,9 @@ def parse_args(args=None):
         help="Path to CWLProv Research Object folder (default: .)",
         default=None
         )
-    parser.add_argument("--verbose", default=False, action='store_true',
+    parser.add_argument("--verbose", "-v", default=False, action='store_true',
         help="More verbose logging")
-    parser.add_argument("--quiet", "-q", default=True, action='store_true',
+    parser.add_argument("--quiet", "-q", default=False, action='store_true',
         help="No logging or hints")
 
     parser.add_argument("--hints", default=True, action='store_true',
@@ -268,6 +268,8 @@ def run(ro, args):
     if not activity:
         print("Provenance does not describe activity %s" % uri, file=sys.stderr)
         return Status.UNKNOWN_RUN
+    if args.verbose:
+        print(activity)
     label = ""
     if args.labels:
         label = " %s " % (_first(activity.get_attribute("prov:label")) or "")
@@ -286,6 +288,8 @@ def run(ro, args):
         else:
             w_duration = " (unknown duration)"
 
+    if args.verbose and start:
+        print(start)
     padded_start_time = ""
     if args.end and args.start:
         # 2 columns
@@ -293,13 +297,27 @@ def run(ro, args):
     elif args.end or args.start:
         # 1 column, we don't care which
         padded_start_time = "%s " % (start_time)
-    print("%sFlow %s >%s%s" % (padded_start_time, name, label, w_duration))
+    print("%sFlow %s [%s%s" % (padded_start_time, name, label, w_duration))
 
     # inputs
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
-        print(u)
-
+        if args.verbose:
+            print(u)
+        entity = _prov_attr(PROV_ATTR_ENTITY, u)
+        entity_id = entity and entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        role = _prov_attr(PROV_ROLE, u)
+        time = _prov_attr(PROV_ATTR_TIME, u)
+        if args.start and args.end:
+            # 2 col timestamps
+            time_part = "%s %s " % (time or "(unknown generation time)", PADDING)
+        elif args.start or args.end:
+            # 1 col timestamp
+            time_part = "%s " % (time or "(unknown generation time)")
+        else:
+            time_part = ""        
+        print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
+        
     # steps
     have_nested = False
     if args.steps:
@@ -307,6 +325,9 @@ def run(ro, args):
         steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
         for child in steps:
             c_activity = _first(prov_doc.get_record(child))
+            if args.verbose:
+                print(c_activity)
+
             c_label = ""
             if args.labels:
                 c_label = " %s " % (_first(c_activity.get_attribute("prov:label")) or "")
@@ -329,20 +350,45 @@ def run(ro, args):
             c_end_time = args.end and "%s " % (c_end_time or PADDING)
             print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
 
+    # generated
+    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
+    for g in gen:
+        if args.verbose:
+            print(g)
+        entity = _prov_attr(PROV_ATTR_ENTITY, g)
+        entity_id = entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        role = _prov_attr(PROV_ROLE, g)
+        time = _prov_attr(PROV_ATTR_TIME, g)
+        if args.start and args.end:
+            # 2 col timestamps
+            time_part = "%s %s " % (PADDING, time or "(unknown generation time)")
+        elif args.start or args.end:
+            # 1 col timestamp
+            time_part = "%s " % (time or "(unknown generation time)")
+        else:
+            time_part = ""        
+        print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
+        
+
+    if args.verbose and end:
+        print(end)
+
     # end
     padded_end_time = ""
     if args.end and args.start:
         padded_end_time = "%s %s " % (PADDING, end_time)        
     elif args.end or args.start:
         padded_end_time = "%s " % (end_time)
-    print("%sFlow %s <%s%s" % (padded_end_time, name, label, w_duration))
+    print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
 
     if args.hints and not args.quiet:
         print("Legend:")
-        print("  > Workflow start")
+        print("  [ Workflow start")
+        print("  < Used as input")
+        print("  > Generated as output")
         if have_nested:
             print("  * Nested provenance, use UUID to explore: cwlprov run %s" % c_id)
-        print("  < Workflow start")
+        print("  ] Workflow end")
 
     return Status.OK
 
