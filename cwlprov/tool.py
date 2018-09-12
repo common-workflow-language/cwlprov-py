@@ -250,6 +250,8 @@ def _prov_attr(attr, elem):
     return _first(elem.get_attribute(attr))
 
 def _usage(activity_id, prov_doc, args):
+    if not args.inputs:
+        return
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
         if args.verbose:
@@ -269,6 +271,8 @@ def _usage(activity_id, prov_doc, args):
         print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
 
 def _generation(activity_id, prov_doc, args):
+    if not args.outputs:
+        return
     gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
     for g in gen:
         if args.verbose:
@@ -393,8 +397,10 @@ def run(ro, args):
     if args.hints and not args.quiet:
         print("Legend:")
         print("  [ Workflow start")
-        print("  < Used as input")
-        print("  > Generated as output")
+        if args.inputs:
+            print("  < Used as input")
+        if args.outputs:
+            print("  > Generated as output")
         if have_nested:
             print("  * Nested provenance, use UUID to explore: cwlprov run %s" % c_id)
         print("  ] Workflow end")
