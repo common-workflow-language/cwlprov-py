@@ -35,6 +35,8 @@ import shutil
 from prov.identifier import Identifier
 from prov.model import *
 from enum import IntEnum
+import urllib.parse
+import json
 
 BAGIT_RO_PROFILES = (
     "https://w3id.org/ro/bagit/profile", 
@@ -50,6 +52,9 @@ CWLPROV_SUPPORTED = (
 MANIFEST_JSON = posixpath.join("metadata", "manifest.json")
 
 TIME_PADDING = " " * 26  # len("2018-08-08 22:44:06.573330")
+
+# PROV namespaces
+CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
 
 class Status(IntEnum):
     """Exit codes from main()"""
@@ -84,7 +89,9 @@ def parse_args(args=None):
     parser_who = subparsers.add_parser('who', help='who ran the workflow')    
     parser_prov = subparsers.add_parser('prov', help='show provenance')
     parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
-    parser_prov.add_argument("--format", "-f", default="files", help="Output in PROV format (default: files)")
+    parser_prov.add_argument("--format", "-f", default="files", 
+        choices=["files"] + list(MEDIA_TYPES.keys()),
+        help="Output in PROV format (default: files)")
     parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
@@ -95,7 +102,9 @@ def parse_args(args=None):
         help="Show parameter names")
     parser_input.add_argument("--no-parameters", default=True, action='store_false',
         dest="parameters", help="Do not show parameter names")
-
+    parser_input.add_argument("--format", default="files", 
+        choices=["files", "json", "values"],
+        help="Output format, (default: files)")
 
     parser_output = subparsers.add_parser('outputs', help='show workflow/step outputs')
     parser_output.add_argument("--run", default=None, help="workflow run UUID")
@@ -351,17 +360,27 @@ def inputs(ro, args):
         else:
             print("Inputs for workflow %s" % (wf_name))
 
+    job = {}
+
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
         if args.verbose:
             print(u)
         entity_id = _prov_attr(PROV_ATTR_ENTITY, u)
         role = _prov_attr(PROV_ROLE, u)
-        if args.parameters and not args.quiet:
-            if isinstance(role, QualifiedName):
-                role_name = role.localpart
-            else:
-                role_name = str(role)
+
+        # Naively assume CWL identifier structure of URI
+        if not role:
+            print("Unknown role for usage %s, skipping input" % u)
+            role_name = None
+            continue
+        
+        # poor mans CWL parameter URI deconstruction
+        role_name = str(role)
+        role_name = role_name.split("/")[-1]
+        role_name = urllib.parse.unquote(role_name)
+        
+        if args.parameters and not args.quiet:            
             print("Input %s:" % role_name) 
         time = _prov_attr(PROV_ATTR_TIME, u)
         entity = _first(prov_doc.get_record(entity_id))
@@ -392,14 +411,18 @@ def inputs(ro, args):
             if args.verbose:
                 print(bundled)
             bundled_path = path(bundled, ro)
+            job[role_name] = {}
+            job[role_name]["class"] = "File"
+            job[role_name]["path"] = str(bundled_path)
             print(bundled_path)
             break
 
         # Perhaps it has prov:value ? 
         value = _prov_attr(PROV_VALUE, entity)
-        if not value is None: # might be False
-            print(value)        
-
+        if value is not None: # but might be False
+            job[role_name] = value
+            print(value)
+    print(json.dumps(job))
 
 def outputs(ro, args):
     wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
@@ -609,13 +632,11 @@ def run(ro, args):
 
 
 MEDIA_TYPES = {
-    "txt": 'text/plain; charset="UTF-8"',
     "ttl": 'text/turtle; charset="UTF-8"',
     "rdf": 'application/rdf+xml',
     "json": 'application/json',
     "jsonld": 'application/ld+json',
     "xml": 'application/xml',
-    "cwl": 'text/x+yaml; charset="UTF-8"',
     "provn": 'text/provenance-notation; charset="UTF-8"',
     "nt": 'application/n-triples',
 }
