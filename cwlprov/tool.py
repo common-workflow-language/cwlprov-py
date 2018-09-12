@@ -249,6 +249,44 @@ def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACT
 def _prov_attr(attr, elem):
     return _first(elem.get_attribute(attr))
 
+def _usage(activity_id, prov_doc, args):
+    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
+    for u in usage:
+        if args.verbose:
+            print(u)
+        entity = _prov_attr(PROV_ATTR_ENTITY, u)
+        entity_id = entity and entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        role = _prov_attr(PROV_ROLE, u)
+        time = _prov_attr(PROV_ATTR_TIME, u)
+        if args.start and args.end:
+            # 2 col timestamps
+            time_part = "%s %s " % (time or "(unknown usage time)     ", PADDING)
+        elif args.start or args.end:
+            # 1 col timestamp
+            time_part = "%s " % (time or "(unknown usage time)     ")
+        else:
+            time_part = ""        
+        print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
+
+def _generation(activity_id, prov_doc, args):
+    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
+    for g in gen:
+        if args.verbose:
+            print(g)
+        entity = _prov_attr(PROV_ATTR_ENTITY, g)
+        entity_id = entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        role = _prov_attr(PROV_ROLE, g)
+        time = _prov_attr(PROV_ATTR_TIME, g)
+        if args.start and args.end:
+            # 2 col timestamps
+            time_part = "%s %s " % (PADDING, time or "(unknown generation time)")
+        elif args.start or args.end:
+            # 1 col timestamp
+            time_part = "%s " % (time or "(unknown generation time)")
+        else:
+            time_part = ""        
+        print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
+
 def run(ro, args):
     uri,uuid = _wf_id(ro, args)
     name = str(uuid or uri)
@@ -300,23 +338,7 @@ def run(ro, args):
     print("%sFlow %s [%s%s" % (padded_start_time, name, label, w_duration))
 
     # inputs
-    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
-    for u in usage:
-        if args.verbose:
-            print(u)
-        entity = _prov_attr(PROV_ATTR_ENTITY, u)
-        entity_id = entity and entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
-        role = _prov_attr(PROV_ROLE, u)
-        time = _prov_attr(PROV_ATTR_TIME, u)
-        if args.start and args.end:
-            # 2 col timestamps
-            time_part = "%s %s " % (time or "(unknown generation time)", PADDING)
-        elif args.start or args.end:
-            # 1 col timestamp
-            time_part = "%s " % (time or "(unknown generation time)")
-        else:
-            time_part = ""        
-        print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
+    _usage(activity_id, prov_doc, args)
         
     # steps
     have_nested = False
@@ -349,26 +371,13 @@ def run(ro, args):
             c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
             c_end_time = args.end and "%s " % (c_end_time or PADDING)
             print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
+            _usage(child, prov_doc, args)
+            _generation(child, prov_doc, args)
+
+
 
     # generated
-    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
-    for g in gen:
-        if args.verbose:
-            print(g)
-        entity = _prov_attr(PROV_ATTR_ENTITY, g)
-        entity_id = entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
-        role = _prov_attr(PROV_ROLE, g)
-        time = _prov_attr(PROV_ATTR_TIME, g)
-        if args.start and args.end:
-            # 2 col timestamps
-            time_part = "%s %s " % (PADDING, time or "(unknown generation time)")
-        elif args.start or args.end:
-            # 1 col timestamp
-            time_part = "%s " % (time or "(unknown generation time)")
-        else:
-            time_part = ""        
-        print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
-        
+    _generation(activity_id, prov_doc, args)
 
     if args.verbose and end:
         print(end)
