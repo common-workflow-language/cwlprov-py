@@ -82,7 +82,7 @@ class Status(IntEnum):
     UNSUPPORTED_CWLPROV_VERSION = 168
 
 def parse_args(args=None):
-    parser = argparse.ArgumentParser(description='cwlprov')
+    parser = argparse.ArgumentParser(description='cwlprov explores Research Objects containing provenance of Common Workflow Language executions. <https://w3id.org/cwl/prov/>')
     parser.add_argument("--directory", "-d", 
         help="Path to CWLProv Research Object (default: .)",
         default=None
