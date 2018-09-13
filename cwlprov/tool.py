@@ -27,7 +27,7 @@ import arcp
 import bagit
 from uuid import UUID
 import bdbag
-from bdbag.bdbagit import BDBag
+from bdbag.bdbagit import BDBag, BagError
 import posixpath
 import pathlib
 from pathlib import Path
@@ -37,6 +37,8 @@ from prov.model import *
 from enum import IntEnum
 import urllib.parse
 import json
+
+import errno
 
 BAGIT_RO_PROFILES = (
     "https://w3id.org/ro/bagit/profile", 
@@ -59,13 +61,19 @@ CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
 class Status(IntEnum):
     """Exit codes from main()"""
     OK = 0
-    UNKNOWN_COMMAND = 1
-    BAG_NOT_FOUND = 2
-    INVALID_BAG = 3
-    MISSING_PROFILE = 4
-    UNSUPPORTED_CWLPROV_VERSION = 5
-    UNKNOWN_RUN = 6
-    UNKNOWN_FORMAT = 7
+    UNHANDLED_ERROR = errno.EPERM
+    UNKNOWN_COMMAND = errno.EINVAL
+    UNKNOWN_FORMAT = errno.EINVAL
+    IO_ERROR = errno.EIO
+    BAG_NOT_FOUND = errno.ENOENT
+    NOT_A_DIRECTORY = errno.ENOTDIR
+    UNKNOWN_RUN = errno.ENODATA
+    PERMISSION_ERROR = errno.EACCES
+    # User-specified exit codes
+    # http://www.tldp.org/LDP/abs/html/exitcodes.html
+    MISSING_PROFILE = 166
+    INVALID_BAG = 167
+    UNSUPPORTED_CWLPROV_VERSION = 168
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov')
@@ -156,7 +164,7 @@ def parse_args(args=None):
 def _determine_bagit_folder(folder=None):
     # Absolute so we won't climb to ../../../../../ forever
     # and have resolved any symlinks
-    folder = pathlib.Path().absolute()
+    folder = pathlib.Path(folder or "").absolute()
     while True:
         bagit_file = folder / "bagit.txt"
         if bagit_file.is_file():
@@ -697,11 +705,37 @@ def main(args=None):
     if not folder:        
         print("Could not find bagit.txt, try cwlprov -d mybag/", file=sys.stderr)
         return Status.BAG_NOT_FOUND
+    folder = pathlib.Path(folder)
+    if not folder.exists():
+        print("No such file or directory: %s" % folder)
+        return Status.BAG_NOT_FOUND
+    if not folder.is_dir():
+        print("Not a directory: %s" % folder)
+        return Status.NOT_A_DIRECTORY
+    bagit_file = folder / "bagit.txt"
+    if not bagit_file.is_file():
+        print("File not found: %s" % bagit_file)
+        return Status.BAG_NOT_FOUND
+
+
+
     
     full_validation = args.cmd == "validate"
 
     ## BagIt check
-    bag = BDBag(str(folder))
+    try:
+        bag = BDBag(str(folder))
+    except BagError as e:
+        print(e, file=sys.stderr)
+        return Status.INVALID_BAG
+    except PermissionError as e:
+        print(e, file=sys.stderr)
+        return Status.PERMISSION_ERROR
+    except OSError as e:
+        print(e, file=sys.stderr)
+        return Status.IO_ERROR
+    # Unhandled errors will show Python stacktrace
+
     invalid = validate_bag(bag, full_validation)
     if invalid:
         return invalid
