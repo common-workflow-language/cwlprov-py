@@ -21,7 +21,6 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
-
 import sys
 import argparse
 from functools import partial
@@ -267,9 +266,9 @@ def who(ro, args):
     # about RO?
     createdBy = _many(ro.createdBy)
     authoredBy = _many(ro.authoredBy)
-    if createdBy or not quiet:
+    if createdBy or not args.quiet:
         print("Packaged By: %s" % createdBy or "(unknown)")
-    if authoredBy or not quiet:
+    if authoredBy or not args.quiet:
         print("Executed By: %s" % authoredBy or "(unknown)")
     return Status.OK
 
@@ -805,7 +804,8 @@ def main(args=None):
     cmd = COMMANDS.get(args.cmd)
     if not cmd:
         # Light-weight validation
-        print("Detected CWLProv research Object: %s" % folder)
+        if not args.quiet:
+            print("Detected CWLProv research Object: %s" % folder)
         return Status.OK
     
     return cmd(ro, args)
