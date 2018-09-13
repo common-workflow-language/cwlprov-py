@@ -78,9 +78,15 @@ class Status(IntEnum):
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov')
     parser.add_argument("--directory", "-d", 
-        help="Path to CWLProv Research Object folder (default: .)",
+        help="Path to CWLProv Research Object (default: .)",
         default=None
         )
+
+    parser.add_argument("--relative", default=None, action='store_true',
+        help="Output paths relative to current directory (default if -d is missing or relative)")
+    parser.add_argument("--absolute", default=None, action='store_false',
+        dest="relative", help="Output absolute paths (default if -d is absolute)")
+
     parser.add_argument("--verbose", "-v", default=False, action='store_true',
         help="More verbose logging")
     parser.add_argument("--quiet", "-q", default=False, action='store_true',
@@ -92,10 +98,10 @@ def parse_args(args=None):
         dest="hints", help="Do not show hints")
     subparsers = parser.add_subparsers(title='commands', dest="cmd")
 
-    parser_validate = subparsers.add_parser('validate', help='validate the CWLProv RO')
-    parser_info = subparsers.add_parser('info', help='CWLProv RO')
-    parser_who = subparsers.add_parser('who', help='who ran the workflow')    
-    parser_prov = subparsers.add_parser('prov', help='show provenance')
+    parser_validate = subparsers.add_parser('validate', help='validate the CWLProv Research Object')
+    parser_info = subparsers.add_parser('info', help='show research object metadata')
+    parser_who = subparsers.add_parser('who', help='show who ran the workflow')    
+    parser_prov = subparsers.add_parser('prov', help='export workflow execution provenance in PROV format')
     parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_prov.add_argument("--format", "-f", default="files", 
         choices=["files"] + list(MEDIA_TYPES.keys()),
@@ -103,7 +109,7 @@ def parse_args(args=None):
     parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
-    parser_input = subparsers.add_parser('inputs', help='show workflow/step inputs')
+    parser_input = subparsers.add_parser('inputs', help='list workflow/step input files/values')
     parser_input.add_argument("--run", default=None, help="workflow run UUID")
     parser_input.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
     parser_input.add_argument("--parameters",  default=True, action='store_true',
@@ -114,7 +120,7 @@ def parse_args(args=None):
         choices=["files", "json", "values"],
         help="Output format, (default: files)")
 
-    parser_output = subparsers.add_parser('outputs', help='show workflow/step outputs')
+    parser_output = subparsers.add_parser('outputs', help='list workflow/step output files/values')
     parser_output.add_argument("--run", default=None, help="workflow run UUID")
     parser_output.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
     parser_output.add_argument("--parameters",  default=True, action='store_true',
@@ -123,7 +129,7 @@ def parse_args(args=None):
         dest="parameters", help="Do not show parameter names")
 
 
-    parser_run = subparsers.add_parser('run', help='show workflow execution')
+    parser_run = subparsers.add_parser('run', help='show workflow execution log')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_run.add_argument("--step", "-s", default=None, 
         help="Show only step with given UUID")
@@ -158,6 +164,8 @@ def parse_args(args=None):
         action='store_true', help="Show inputs")
     parser_run.add_argument("--outputs", "-o", default=False, 
         action='store_true', help="Show outputs")
+
+    parser_runs = subparsers.add_parser('runs', help='list all workflow executions in RO')
 
     return parser.parse_args(args)
 
@@ -518,6 +526,29 @@ def outputs(ro, args):
         if not value is None: # might be False
             print(value)        
 
+def runs(ro, args):
+    for run in ro.resources_with_provenance():
+        name = run.replace("urn:uuid:", "")
+        
+        if args.verbose or not args.quiet:
+            # Also load up the provenance to find its name
+            prov_doc = _prov_document(ro, run, args)
+            if not prov_doc:
+                print(name)
+                print("No provenance found for: %s" % name, file=sys.stderr)
+                continue
+            
+            activity_id = Identifier(run)
+            activity = _first(prov_doc.get_record(activity_id))
+            if not activity:
+                print("Provenance does not describe activity %s" % run, file=sys.stderr)
+                return Status.UNKNOWN_RUN
+            if args.verbose:
+                print(activity)        
+            label = _first(activity.get_attribute("prov:label")) or ""
+            print("%s %s" % (name, label))
+        else:
+            print(name)
 
 
 def run(ro, args):
@@ -753,6 +784,7 @@ def main(args=None):
     COMMANDS = {
         "info": info,
         "run": run,
+        "runs": runs,
         "who": who,
         "prov": prov,
         "inputs": inputs,

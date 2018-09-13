@@ -180,6 +180,13 @@ class ResearchObject:
             if a.motivatedBy == PROV.has_provenance:
                 return a.hasBodies
 
+    def resources_with_provenance(self):
+        new_annotation = partial(Annotation, self.manifest)
+        anns = map(new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance))
+        for a in anns:
+            for t in a.hasTargets:
+                yield t
+
     def mediatype(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
         return next(map(str, self.manifest.objects(resource, DC["format"])), None)
@@ -212,7 +219,6 @@ class Annotation:
     @property    
     def hasTargets(self):
         return set(self._graph.objects(self._id, OA.hasTarget))
-
 
     @property    
     def motivatedBy(self):
