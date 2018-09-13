@@ -40,4 +40,6 @@ at the discretion of the leadership team.
 For more details, see our 
 [Code of Conduct](https://github.com/common-workflow-language/common-workflow-language/blob/master/CODE_OF_CONDUCT.md).
 
+Please note that cwlprov-py is for the CWLProv RO analytics which is generated as a result
+of a CWL workflow run. 
 
