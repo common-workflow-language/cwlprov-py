@@ -546,9 +546,13 @@ def runs(ro, args):
             if args.verbose:
                 print(activity)        
             label = _first(activity.get_attribute("prov:label")) or ""
-            print("%s %s" % (name, label))
+            is_master = run == ro.workflow_id
+            print("%s %s %s" % (name, is_master and "*" or " ", label))
         else:
             print(name)
+    if args.hints and not args.quiet:
+        print("Legend:")
+        print(" * master workflow")
 
 
 def run(ro, args):
