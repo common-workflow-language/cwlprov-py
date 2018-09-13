@@ -14,6 +14,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+"""
+cwlprov Command Line Tool
+"""
+__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
+__license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+
+
 import sys
 import argparse
 from functools import partial
@@ -22,7 +30,6 @@ import dateutil.parser
 
 from cwlprov.ro import ResearchObject
 
-# TODO: Move any use these to cwlprov.*
 import arcp
 import bagit
 from uuid import UUID
@@ -37,7 +44,6 @@ from prov.model import *
 from enum import IntEnum
 import urllib.parse
 import json
-
 import errno
 
 BAGIT_RO_PROFILES = (

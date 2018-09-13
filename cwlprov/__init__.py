@@ -15,7 +15,7 @@
 ## limitations under the License.
 
 """
-cwlprov Python API
+cwlprov Python API and command line
 """
 __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
