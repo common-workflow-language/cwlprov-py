@@ -251,6 +251,9 @@ def validate_ro(ro, full_validation=False, args=None):
     return Status.OK
 
 
+def _simpler_uuid(uri):
+    return str(uri).replace("urn:uuid:", "")
+
 def _as_uuid(w):
     try:
         uuid = UUID(w.replace("urn:uuid:", ""))
@@ -275,7 +278,7 @@ def _usage(activity_id, prov_doc, args):
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
         entity = _prov_attr(PROV_ATTR_ENTITY, u)
-        entity_id = entity and entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
         role = _prov_attr(PROV_ROLE, u)
         time = _prov_attr(PROV_ATTR_TIME, u)
         if args.start and args.end:
@@ -294,7 +297,7 @@ def _generation(activity_id, prov_doc, args):
     gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
     for g in gen:
         entity = _prov_attr(PROV_ATTR_ENTITY, g)
-        entity_id = entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
+        entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
         role = _prov_attr(PROV_ROLE, g)
         time = _prov_attr(PROV_ATTR_TIME, g)
         if args.start and args.end:
@@ -692,7 +695,7 @@ class Tool:
         ro = self.ro
         args = self.args        
         for run in ro.resources_with_provenance():
-            name = run.replace("urn:uuid:", "")
+            name = _simpler_uuid(run)
             
             if args.verbose or not args.quiet:
                 # Also load up the provenance to find its name
@@ -793,7 +796,7 @@ class Tool:
 
                 c_provenance = ro.provenance(child.uri)
                 have_nested = have_nested or c_provenance
-                c_id = str(child.uri).replace("urn:uuid:", "")
+                c_id = _simpler_uuid(child.uri)
                 c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
                 c_end_time = args.end and "%s " % (c_end_time or TIME_PADDING)
                 print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
