@@ -29,6 +29,7 @@ import dateutil.parser
 import errno
 import json
 import logging
+import os.path
 import pathlib
 import posixpath
 import shutil
@@ -84,6 +85,10 @@ class Status(IntEnum):
     MISSING_PROFILE = 166
     INVALID_BAG = 167
     UNSUPPORTED_CWLPROV_VERSION = 168
+
+# A shameful global variable for --absolute / --relative
+relative_paths = True
+
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov explores Research Objects containing provenance of Common Workflow Language executions. <https://w3id.org/cwl/prov/>')
@@ -280,7 +285,10 @@ def who(ro, args):
 
 def path(p, ro):
     p = ro.resolve_path(str(p))
-    return Path(p).relative_to(Path().absolute())
+    if relative_paths:
+        return os.path.relpath(Path(p), Path())        
+    else:
+        return Path(p).absolute()
 
 def _as_uuid(w, args):
     try:
@@ -726,6 +734,18 @@ def main(args=None):
     # type: (...) -> None
     """cwlprov command line tool"""
     args = parse_args(args)
+    
+    global relative_paths
+    if args.relative is not None:
+        relative_paths = args.relative
+    else:
+        if args.directory and Path(args.directory).is_absolute():
+            # absolute if -d is absolute
+            relative_paths = False
+        else:
+            # default: relative if -d is relative
+            relative_paths = True
+            # FIXME: What if -d ../../ ? 
     
     if args.quiet and args.verbose:
         _logger.error("Incompatible parameters: --quiet --verbose")
