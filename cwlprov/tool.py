@@ -28,6 +28,7 @@ import bdbag
 import dateutil.parser
 import errno
 import json
+import logging
 import pathlib
 import posixpath
 import shutil
@@ -93,8 +94,8 @@ def parse_args(args=None):
     parser.add_argument("--absolute", default=None, action='store_false',
         dest="relative", help="Output absolute paths (default if -d is absolute)")
 
-    parser.add_argument("--verbose", "-v", default=False, action='store_true',
-        help="More verbose logging")
+    parser.add_argument("--verbose", "-v", default=0, action='count',
+        help="Verbose logging (repeat for more verbose)")
     parser.add_argument("--quiet", "-q", default=False, action='store_true',
         help="No logging or hints")
 
@@ -730,10 +731,26 @@ def prov(ro, args):
             print() # workaround for missing trailing newline
     return Status.OK
 
+def _set_log_level(quiet=None, verbose=0):
+    if quiet: # -q
+        log_level = logging.ERROR
+    if not verbose: # default
+        log_level = logging.WARNING
+    elif verbose == 1: # -v
+        log_level = logging.INFO
+    else: # -v -v
+        log_level = logging.DEBUG            
+    logging.basicConfig(level=log_level)
+
 def main(args=None):
     # type: (...) -> None
     """cwlprov command line tool"""
     args = parse_args(args)
+    
+    if args.quiet and args.verbose:
+        print("Incompatible parameters: --quiet --verbose", file=sys.stderr)
+        return Status.UNKNOWN_COMMAND
+    _set_log_level(args.quiet, args.verbose)
 
     folder = args.directory or _determine_bagit_folder()
     if not folder:        
