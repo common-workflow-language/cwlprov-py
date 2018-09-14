@@ -98,6 +98,9 @@ def parse_args(args=None):
     parser.add_argument("--absolute", default=None, action='store_false',
         dest="relative", help="Output absolute paths (default if -d is absolute)")
 
+    parser.add_argument("--output", "-o", default="-",
+        help="File to write output to (default: stdout)")
+
     parser.add_argument("--verbose", "-v", default=0, action='count',
         help="Verbose logging (repeat for more verbose)")
     parser.add_argument("--quiet", "-q", default=False, action='store_true',
@@ -225,43 +228,6 @@ def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACT
 def _prov_attr(attr, elem):
     return first(elem.get_attribute(attr))
 
-def _usage(activity_id, prov_doc, args):
-    if not args.inputs:
-        return
-    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
-    for u in usage:
-        entity = _prov_attr(PROV_ATTR_ENTITY, u)
-        entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
-        role = _prov_attr(PROV_ROLE, u)
-        time = _prov_attr(PROV_ATTR_TIME, u)
-        if args.start and args.end:
-            # 2 col timestamps
-            time_part = "%s %s " % (time or "(unknown usage time)     ", TIME_PADDING)
-        elif args.start or args.end:
-            # 1 col timestamp
-            time_part = "%s " % (time or "(unknown usage time)     ")
-        else:
-            time_part = ""        
-        print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
-
-def _generation(activity_id, prov_doc, args):
-    if not args.outputs:
-        return
-    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
-    for g in gen:
-        entity = _prov_attr(PROV_ATTR_ENTITY, g)
-        entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
-        role = _prov_attr(PROV_ROLE, g)
-        time = _prov_attr(PROV_ATTR_TIME, g)
-        if args.start and args.end:
-            # 2 col timestamps
-            time_part = "%s %s " % (TIME_PADDING, time or "(unknown generation time)")
-        elif args.start or args.end:
-            # 1 col timestamp
-            time_part = "%s " % (time or "(unknown generation time)")
-        else:
-            time_part = ""        
-        print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
 
 
 
@@ -314,12 +280,16 @@ def _set_log_level(quiet=None, verbose=0):
 class Tool:
     def __init__(self, args=None):
         self.args = parse_args(args)
+        if self.args.output != "-":
+            self.output = open(self.args.output, mode="w", encoding="UTF-8")
+        else:
+            self.output = None # sys.stdout
 
     def main(self):
         # type: (...) -> None
         """cwlprov command line tool"""
         args = self.args
-                
+
         if args.relative is not None:
             self.relative_paths = args.relative and Path()
         else:
@@ -328,12 +298,15 @@ class Tool:
                 self.relative_paths = False
             else:
                 # default: relative to "." if -d is relative
-                self.relative_paths = Path()                
+                self.relative_paths = Path()
         
         if args.quiet and args.verbose:
             _logger.error("Incompatible parameters: --quiet --verbose")
             return Status.UNKNOWN_COMMAND
         _set_log_level(args.quiet, args.verbose)
+
+        # Don't output hints for --quiet or --output
+        self.hints = args.hints and not args.quiet and not self.output
 
         folder = args.directory or _determine_bagit_folder()
         if not folder:        
@@ -379,7 +352,7 @@ class Tool:
 
         if full_validation:
             if not args.quiet:
-                print("Valid CWLProv RO: %s" % self._absolute_or_relative_path(folder))
+                self.print("Valid CWLProv RO: %s" % self._absolute_or_relative_path(folder))
             return Status.OK
 
         # Else, find the other commands
@@ -397,7 +370,7 @@ class Tool:
         if not cmd:
             # Light-weight validation
             if not args.quiet:
-                print("Detected CWLProv research Object: %s" % folder)
+                self.print("Detected CWLProv research Object: %s" % folder)
             return Status.OK
         
         return cmd()
@@ -430,7 +403,7 @@ class Tool:
         supported_ro = set(BAGIT_RO_PROFILES).intersection(profiles)
         if not supported_ro:
             _logger.warning("Missing BdBag profile: %s", bag.path)
-            if args.hints and not args.quiet:
+            if self.hints:
                 print("Try adding to %s/bag-info.txt:" % bag.path)
                 print("BagIt-Profile-Identifier: %s" % BAGIT_RO_PROFILES[0])
             if full_validation:
@@ -450,7 +423,7 @@ class Tool:
         if not cwlprov:
             if full_validation or not args.quiet: 
                 _logger.warning("Missing CWLProv profile: %s", ro.bag.path)
-            if full_validation and args.hints and not args.quiet:
+            if full_validation and self.hints:
                 print("Try adding to %s/metadata/manifest.json:" % ro.bag.path)
                 print('{\n  "id": "/",\n  "conformsTo", "%s",\n  ...\n}' %
                     CWLPROV_SUPPORTED[0])
@@ -460,7 +433,7 @@ class Tool:
             # Probably a newer one this code don't support yet; it will 
             # probably be fine
             _logger.warning("Unsupported CWLProv version: %s", cwlprov)
-            if args.hints:
+            if self.hints:
                 print("Supported profiles:\n %s" %
                         "\n ".join(CWLPROV_SUPPORTED)
                     )
@@ -474,17 +447,17 @@ class Tool:
 
         # About RO?
         if not args.quiet:
-            print(ro.bag.info.get("External-Description", "Research Object"))
-        print("ID: %s" % ro.id)
+            self.print(ro.bag.info.get("External-Description", "Research Object"))
+        self.print("ID: %s" % ro.id)
         cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
         if cwlprov:
-            print("Profile: %s" % many(cwlprov))
+            self.print("Profile: %s" % many(cwlprov))
         w = ro.workflow_id
         if w:
-            print("Workflow ID: %s" % w)
+            self.print("Workflow ID: %s" % w)
         when = ro.bag.info.get("Bagging-Date")
         if when:
-            print("Packaged: %s" % when)
+            self.print("Packaged: %s" % when)
         return Status.OK
 
     def who(self): 
@@ -495,9 +468,9 @@ class Tool:
         createdBy = many(ro.createdBy)
         authoredBy = many(ro.authoredBy)
         if createdBy or not args.quiet:
-            print("Packaged By: %s" % createdBy or "(unknown)")
+            self.print("Packaged By: %s" % createdBy or "(unknown)")
         if authoredBy or not args.quiet:
-            print("Executed By: %s" % authoredBy or "(unknown)")
+            self.print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
 
 
@@ -513,9 +486,9 @@ class Tool:
                 if args.formats:
                     format = ro.mediatype(prov) or ""
                     format = EXTENSIONS.get(format, format)
-                    print("%s %s" % (format, (self._resource_path(prov))))
+                    self.print("%s %s" % (format, (self._resource_path(prov))))
                 else:
-                    print("%s" % self._resource_path(prov))
+                    self.print("%s" % self._resource_path(prov))
         else:
             media_type = MEDIA_TYPES.get(args.format, args.format)
             prov = _prov_format(ro, uri, media_type)
@@ -523,8 +496,8 @@ class Tool:
                 _logger.error("Unrecognized format: %s", args.format)
                 return Status.UNKNOWN_FORMAT
             with prov.open(encoding="UTF-8") as f:
-                shutil.copyfileobj(f, sys.stdout)
-                print() # workaround for missing trailing newline
+                shutil.copyfileobj(f, self.output or sys.stdout)
+                self.print() # workaround for missing trailing newline
         return Status.OK
 
     def inputs(self):
@@ -553,7 +526,7 @@ class Tool:
         activity = provenance.activity(a_uri)
         if not activity:
             _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
-            if not args.run and args.hints:
+            if not args.run and self.hints:
                 print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
             return Status.UNKNOWN_RUN
         activity_id = activity.id
@@ -583,7 +556,7 @@ class Tool:
             role_name = urllib.parse.unquote(role_name)
             
             if args.parameters and not args.quiet:            
-                print("Input %s:" % role_name) 
+                self.print("Input %s:" % role_name) 
             time = u.time
             entity = u.entity()
             if not entity:
@@ -591,7 +564,7 @@ class Tool:
                 continue
 
             if args.verbose:
-                print(entity)
+                self.print(entity)
             file_candidates = [entity]
             file_candidates.extend(entity.specializationOf())
             
@@ -600,20 +573,20 @@ class Tool:
                 if not bundled:
                     continue
                 if args.verbose:
-                    print(bundled)
+                    self.print(bundled)
                 bundled_path = self._resource_path(bundled)
                 job[role_name] = {}
                 job[role_name]["class"] = "File"
                 job[role_name]["path"] = str(bundled_path)
-                print(bundled_path)
+                self.print(bundled_path)
                 break
 
             # Perhaps it has prov:value ? 
             value = entity.value
             if value is not None: # but might be False
                 job[role_name] = value
-                print(value)
-        print(json.dumps(job))
+                self.print(value)
+        self.print(json.dumps(job))
 
     def outputs(self):
         ro = self.ro
@@ -642,7 +615,7 @@ class Tool:
         activity = first(prov_doc.get_record(activity_id))
         if not activity:
             _logger.error("Provenance %s does not describe step %s", wf_name, a_uri)
-            if not args.run and args.hints:
+            if not args.run and self.hints:
                 print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
             return Status.UNKNOWN_RUN
         if args.verbose:
@@ -654,7 +627,7 @@ class Tool:
         gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
         for g in gen:
             if args.verbose:
-                print(g)
+                self.print(g)
             entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
             role = _prov_attr(PROV_ROLE, g)
             if args.parameters and not args.quiet:
@@ -662,7 +635,7 @@ class Tool:
                     role_name = role.localpart
                 else:
                     role_name = str(role)
-                print("Output %s:" % role_name) 
+                self.print("Output %s:" % role_name) 
             time = _prov_attr(PROV_ATTR_TIME, g)
             entity = first(prov_doc.get_record(entity_id))
             if not entity:
@@ -675,11 +648,11 @@ class Tool:
             if specializations:
                 specialization = first(specializations)
                 if args.verbose:
-                    print(specialization)
+                    self.print(specialization)
                 general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
                 generalEntity = general_id and first(prov_doc.get_record(general_id))
                 if args.verbose and generalEntity:
-                    print(generalEntity)
+                    self.print(generalEntity)
                 file_candidates.append(generalEntity)
             
             for file_candidate in file_candidates:
@@ -687,15 +660,15 @@ class Tool:
                 if not bundled:
                     continue
                 if args.verbose:
-                    print(bundled)
+                    self.print(bundled)
                 bundled_path = self._resource_path(bundled)
-                print(bundled_path)
+                self.print(bundled_path)
                 break
 
             # Perhaps it has prov:value ? 
             value = _prov_attr(PROV_VALUE, entity)
             if not value is None: # might be False
-                print(value)        
+                self.print(value)        
 
     def runs(self):
         ro = self.ro
@@ -707,7 +680,7 @@ class Tool:
                 # Also load up the provenance to find its name
                 prov_doc = _prov_document(ro, run, args)
                 if not prov_doc:
-                    print(name)
+                    self.print(name)
                     _logger.warning("No provenance found for: %s", name)
                     continue
                 
@@ -718,13 +691,55 @@ class Tool:
                     return Status.UNKNOWN_RUN
                 label = first(activity.get_attribute("prov:label")) or ""
                 is_master = run == ro.workflow_id
-                print("%s %s %s" % (name, is_master and "*" or " ", label))
+                self.print("%s %s %s" % (name, is_master and "*" or " ", label))
             else:
-                print(name)
-        if args.hints and not args.quiet:
-            print("Legend:")
-            print(" * master workflow")
+                self.print(name)
+        if self.hints:
+            self.print("Legend:")
+            self.print(" * master workflow")
 
+    def _usage(self, activity_id, prov_doc):
+        args = self.args
+        if not args.inputs:
+            return
+        usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
+        for u in usage:
+            entity = _prov_attr(PROV_ATTR_ENTITY, u)
+            entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
+            role = _prov_attr(PROV_ROLE, u)
+            time = _prov_attr(PROV_ATTR_TIME, u)
+            if args.start and args.end:
+                # 2 col timestamps
+                time_part = "%s %s " % (time or "(unknown usage time)     ", TIME_PADDING)
+            elif args.start or args.end:
+                # 1 col timestamp
+                time_part = "%s " % (time or "(unknown usage time)     ")
+            else:
+                time_part = ""        
+            self.print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
+
+    def _generation(self, activity_id, prov_doc):
+        args = self.args
+        if not args.outputs:
+            return
+        gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
+        for g in gen:
+            entity = _prov_attr(PROV_ATTR_ENTITY, g)
+            entity_id = entity and _simpler_uuid(entity.uri).replace("urn:hash::sha1:", "")
+            role = _prov_attr(PROV_ROLE, g)
+            time = _prov_attr(PROV_ATTR_TIME, g)
+            if args.start and args.end:
+                # 2 col timestamps
+                time_part = "%s %s " % (TIME_PADDING, time or "(unknown generation time)")
+            elif args.start or args.end:
+                # 1 col timestamp
+                time_part = "%s " % (time or "(unknown generation time)")
+            else:
+                time_part = ""        
+            self.print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
+
+    def print(self, *args):
+        print(*args, file=self.output or sys.stdout)
 
     def run(self):
         ro = self.ro
@@ -732,7 +747,7 @@ class Tool:
         uri,uuid,name = self._wf_id()
         if not ro.provenance(uri):
             _logger.error("No provenance found for: %s", name)
-            #if args.hints:
+            #if self.hints:
             #    print("Try --search to examine all provenance files")
             return Status.UNKNOWN_RUN
 
@@ -742,14 +757,14 @@ class Tool:
             return Status.UNKNOWN_RUN
 
         if args.verbose:
-            print("Workflow run:",  name)
+            self.print("Workflow run:",  name)
         activity_id = Identifier(uri)
         activity = first(prov_doc.get_record(activity_id))
         if not activity:
             _logger.error("Provenance does not describe activity %s", uri)
             return Status.UNKNOWN_RUN
         if args.verbose:
-            print(activity)
+            self.print(activity)
         label = ""
         if args.labels:
             label = " %s " % (first(activity.get_attribute("prov:label")) or "")
@@ -762,7 +777,7 @@ class Tool:
         
 
         if args.verbose and start:
-            print(start)
+            self.print(start)
         padded_start_time = ""
         if args.end and args.start:
             # 2 columns
@@ -770,10 +785,10 @@ class Tool:
         elif args.end or args.start:
             # 1 column, we don't care which
             padded_start_time = "%s " % (start_time)
-        print("%sFlow %s [%s" % (padded_start_time, name, label))
+        self.print("%sFlow %s [%s" % (padded_start_time, name, label))
 
         # inputs
-        _usage(activity_id, prov_doc, args)
+        self._usage(activity_id, prov_doc)
             
         # steps
         have_nested = False
@@ -783,7 +798,7 @@ class Tool:
             for child in steps:
                 c_activity = first(prov_doc.get_record(child))
                 if args.verbose:
-                    print(c_activity)
+                    self.print(c_activity)
 
                 c_label = ""
                 if args.labels:
@@ -805,17 +820,17 @@ class Tool:
                 c_id = _simpler_uuid(child.uri)
                 c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
                 c_end_time = args.end and "%s " % (c_end_time or TIME_PADDING)
-                print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
-                _usage(child, prov_doc, args)
-                _generation(child, prov_doc, args)
+                self.print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
+                self._usage(child, prov_doc)
+                self._generation(child, prov_doc)
 
 
 
         # generated
-        _generation(activity_id, prov_doc, args)
+        self._generation(activity_id, prov_doc)
 
         if args.verbose and end:
-            print(end)
+            self.print(end)
 
         # end
         padded_end_time = ""
@@ -831,9 +846,9 @@ class Tool:
             else:
                 w_duration = " (unknown duration)"
 
-        print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
+        self.print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
 
-        if args.hints and not args.quiet:
+        if self.hints:
             print("Legend:")
             print("  [ Workflow start")
             if args.inputs:
