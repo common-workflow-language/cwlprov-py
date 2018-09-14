@@ -47,6 +47,9 @@ from .ro import ResearchObject
 from .prov import Provenance
 from .utils import *
 
+_logger = logging.getLogger(__name__)
+
+
 BAGIT_RO_PROFILES = (
     "https://w3id.org/ro/bagit/profile", 
     "http://raw.githubusercontent.com/fair-research/bdbag/master/profiles/bdbag-ro-profile.json"
@@ -198,25 +201,23 @@ def _info_set(bag, key):
 def validate_bag(bag, full_validation=False):
     valid_bag = bag.validate(fast=not full_validation)
     if not valid_bag:
-        print("Invalid BagIt folder: %s" % bag.path,
-            file=sys.stderr)
+        _logger.error("Invalid BagIt folder: %s", bag.path)
         # Specific errors already output from bagit library
         return Status.INVALID_BAG
     # Check we follow right profile
     profiles = _info_set(bag, "BagIt-Profile-Identifier")
     supported_ro = set(BAGIT_RO_PROFILES).intersection(profiles)
     if not supported_ro:
-        if full_validation or not args.quiet:
-            print("Missing BdBag profile: %s" % bag.path,
-                file=sys.stderr)
-        if full_validation and args.hints and not args.quiet:
+        _logger.warning("Missing BdBag profile: %s", bag.path)
+        if args.hints and not args.quiet:
             print("Try adding to %s/bag-info.txt:" % bag.path)
             print("BagIt-Profile-Identifier: %s" % BAGIT_RO_PROFILES[0])
+        if full_validation:
             return Status.MISSING_PROFILE
     # Check we have a manifest
     has_manifest = MANIFEST_JSON in bag.tagfile_entries()
     if not has_manifest:
-        print("Missing from tagmanifest: " + MANIFEST_JSON, file=sys.stderr)
+        _logger.warning("Missing from tagmanifest: %s", MANIFEST_JSON)
         return Status.MISSING_MANIFEST
     return Status.OK
 
@@ -225,8 +226,7 @@ def validate_ro(ro, full_validation=False, args=None):
     cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
     if not cwlprov:
         if full_validation or not args.quiet: 
-            print("Missing CWLProv profile: %s" % ro.bag.path,
-                file=sys.stderr)
+            _logger.warning("Missing CWLProv profile: %s", ro.bag.path)
         if full_validation and args.hints and not args.quiet:
             print("Try adding to %s/metadata/manifest.json:" % ro.bag.path)
             print('{\n  "id": "/",\n  "conformsTo", "%s",\n  ...\n}' %
@@ -236,12 +236,12 @@ def validate_ro(ro, full_validation=False, args=None):
     if cwlprov and not supported_cwlprov:
         # Probably a newer one this code don't support yet; it will 
         # probably be fine
-        if full_validation or not args.quiet: 
-            print("Unsupported CWLProv version: %s" % cwlprov, file=sys.stderr)
-        if full_validation and args.hints and not args.quiet:
+        _logger.warning("Unsupported CWLProv version: %s", cwlprov)
+        if args.hints:
             print("Supported profiles:\n %s" %
                     "\n ".join(CWLPROV_SUPPORTED)
                  )
+        if full_validation:
             return Status.UNSUPPORTED_CWLPROV_VERSION
     return Status.OK
 
@@ -306,8 +306,6 @@ def _usage(activity_id, prov_doc, args):
         return
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
-        if args.verbose:
-            print(u)
         entity = _prov_attr(PROV_ATTR_ENTITY, u)
         entity_id = entity and entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
         role = _prov_attr(PROV_ROLE, u)
@@ -327,8 +325,6 @@ def _generation(activity_id, prov_doc, args):
         return
     gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
     for g in gen:
-        if args.verbose:
-            print(g)
         entity = _prov_attr(PROV_ATTR_ENTITY, g)
         entity_id = entity.uri.replace("urn:uuid:", "").replace("urn:hash::sha1:", "")
         role = _prov_attr(PROV_ROLE, g)
@@ -347,17 +343,15 @@ def inputs(ro, args):
     wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
     a_uri,a_uuid,a_name = _wf_id(ro, args)
     if not ro.provenance(wf_uri):
-        if args.run or args.verbose:
-            print("No provenance found for: %s" % wf_name, file=sys.stderr)
+        _logger.error("No provenance found for: %s", wf_name)
         if args.run:
             # We'll need to give up
             return Status.UNKNOWN_RUN
         else:
-            if args.verbose:
-                print("Assuming primary provenance --run %s" % ro.workflow_id)
+            _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
             wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
             if not ro.provenance(wf_uri):
-                print("No provenance found for: %s" % wf_name, file=sys.stderr)
+                _logger.error("No provenance found for: %s", wf_name)
                 return Status.UNKNOWN_RUN
 
     try:
@@ -372,17 +366,15 @@ def inputs(ro, args):
     activity = provenance.activity(a_uri)
     activity_id = activity.id
     if not activity:
-        print("Provenance does not describe step %s: %s" % (wf_name, a_uri), file=sys.stderr)
+        _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
         if not args.run and args.hints:
             print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
         return Status.UNKNOWN_RUN
-    if args.verbose:
-        print(activity)
-    if args.verbose:
-        if wf_uri != a_uri:
-            print("Inputs for step %s in workflow %s" % (a_name, wf_name))
-        else:
-            print("Inputs for workflow %s" % (wf_name))
+
+    if wf_uri != a_uri:
+        _logger.info("Inputs for step %s in workflow %s", a_name, wf_name)
+    else:
+        _logger.info("Inputs for workflow %s", wf_name)
 
     job = {}
     
@@ -396,7 +388,7 @@ def inputs(ro, args):
 
         # Naively assume CWL identifier structure of URI
         if not role:
-            print("Unknown role for usage %s, skipping input" % u)
+            _logger.warning("Unknown role for usage %s, skipping input", u)
             role_name = None
             continue
         
@@ -410,7 +402,7 @@ def inputs(ro, args):
         time = u.time
         entity = u.entity()
         if not entity:
-            print("No provenance for used entity %s" % entity_id, file=sys.stderr)
+            _logger.warning("No provenance for used entity %s", entity_id)
             continue
 
         if args.verbose:
@@ -444,17 +436,16 @@ def outputs(ro, args):
     wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
     a_uri,a_uuid,a_name = _wf_id(ro, args)
     if not ro.provenance(wf_uri):
-        if args.run or args.verbose:
-            print("No provenance found for: %s in" % wf_name, file=sys.stderr)
         if args.run:
+            _logger.error("No provenance found for: %s in", wf_name)
             # We'll need to give up
             return Status.UNKNOWN_RUN
         else:
-            if args.verbose:
-                print("Assuming primary run --run %s" % ro.workflow_id)
+            _logger.debug("No provenance found for: %s in", wf_name)
+            _logger.info("Assuming primary run --run %s", ro.workflow_id)
             wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
             if not ro.provenance(wf_uri):
-                print("No provenance found for: %s" % wf_name, file=sys.stderr)
+                _logger.error("No provenance found for: %s", wf_name)
                 return Status.UNKNOWN_RUN
 
     prov_doc = _prov_document(ro, wf_uri, args)
@@ -465,17 +456,15 @@ def outputs(ro, args):
     activity_id = Identifier(a_uri)
     activity = first(prov_doc.get_record(activity_id))
     if not activity:
-        print("Provenance %s does not describe step %s" % (wf_name, a_uri), file=sys.stderr)
+        _logger.error("Provenance %s does not describe step %s", wf_name, a_uri)
         if not args.run and args.hints:
             print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
         return Status.UNKNOWN_RUN
     if args.verbose:
-        print(activity)
-    if args.verbose:
         if wf_uri != a_uri:
-            print("Outputs for step %s in workflow %s" % (a_name, wf_name))
+            _logger.info("Outputs for step %s in workflow %s", (a_name, wf_name))
         else:
-            print("Outputs for workflow %s" % (wf_name))
+            _logger.info("Outputs for workflow %s", (wf_name))
 
     gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
     for g in gen:
@@ -492,11 +481,8 @@ def outputs(ro, args):
         time = _prov_attr(PROV_ATTR_TIME, g)
         entity = first(prov_doc.get_record(entity_id))
         if not entity:
-            print("No provenance for generated entity %s" % entity_id, file=sys.stderr)
+            _logger.warning("No provenance for generated entity %s", entity_id)
             continue
-
-        if args.verbose:
-            print(entity)
 
         file_candidates = [entity]
         general_id = None
@@ -535,16 +521,14 @@ def runs(ro, args):
             prov_doc = _prov_document(ro, run, args)
             if not prov_doc:
                 print(name)
-                print("No provenance found for: %s" % name, file=sys.stderr)
+                _logger.warning("No provenance found for: %s", name)
                 continue
             
             activity_id = Identifier(run)
             activity = first(prov_doc.get_record(activity_id))
             if not activity:
-                print("Provenance does not describe activity %s" % run, file=sys.stderr)
+                _logger.error("Provenance does not describe activity %s" % run, file=sys.stderr)
                 return Status.UNKNOWN_RUN
-            if args.verbose:
-                print(activity)        
             label = first(activity.get_attribute("prov:label")) or ""
             is_master = run == ro.workflow_id
             print("%s %s %s" % (name, is_master and "*" or " ", label))
@@ -558,7 +542,7 @@ def runs(ro, args):
 def run(ro, args):
     uri,uuid,name = _wf_id(ro, args)
     if not ro.provenance(uri):
-        print("No provenance found for: %s" % name, file=sys.stderr)
+        _logger.error("No provenance found for: %s", name)
         #if args.hints:
         #    print("Try --search to examine all provenance files")
         return Status.UNKNOWN_RUN
@@ -573,7 +557,7 @@ def run(ro, args):
     activity_id = Identifier(uri)
     activity = first(prov_doc.get_record(activity_id))
     if not activity:
-        print("Provenance does not describe activity %s" % uri, file=sys.stderr)
+        _logger.error("Provenance does not describe activity %s", uri)
         return Status.UNKNOWN_RUN
     if args.verbose:
         print(activity)
@@ -698,14 +682,13 @@ def _prov_document(ro, uri, args):
     for c in candidates:
         prov = _prov_format(ro, uri, MEDIA_TYPES.get(c))
         if prov:
-            if args.verbose:
-                print("Loading %s" % prov)
+            _logger.info("Loading %s", prov)
             if c in rdf_candidates:
                 doc = ProvDocument.deserialize(source=prov, format="rdf", rdf_format=c)
             else:
                 doc = ProvDocument.deserialize(source=prov, format=c)
             return doc.unified()
-    print("No PROV compatible format found for %s" % uri, file=sys.stderr)
+    _logger.warning("No PROV compatible format found for %s", uri)
     return None
 
 
@@ -724,7 +707,7 @@ def prov(ro, args):
         media_type = MEDIA_TYPES.get(args.format, args.format)
         prov = _prov_format(ro, uri, media_type)
         if not prov:
-            print("Unrecognized format: %s" % args.format)
+            _logger.error("Unrecognized format: %s", args.format)
             return Status.UNKNOWN_FORMAT
         with prov.open(encoding="UTF-8") as f:
             shutil.copyfileobj(f, sys.stdout)
@@ -748,42 +731,40 @@ def main(args=None):
     args = parse_args(args)
     
     if args.quiet and args.verbose:
-        print("Incompatible parameters: --quiet --verbose", file=sys.stderr)
+        _logger.error("Incompatible parameters: --quiet --verbose")
         return Status.UNKNOWN_COMMAND
     _set_log_level(args.quiet, args.verbose)
 
     folder = args.directory or _determine_bagit_folder()
     if not folder:        
-        print("Could not find bagit.txt, try cwlprov -d mybag/", file=sys.stderr)
+        _logger.error("Could not find bagit.txt, try cwlprov -d mybag/")
         return Status.BAG_NOT_FOUND
     folder = pathlib.Path(folder)
     if not folder.exists():
-        print("No such file or directory: %s" % folder)
+        _logger.error("No such file or directory: %s",  folder)
         return Status.BAG_NOT_FOUND
     if not folder.is_dir():
-        print("Not a directory: %s" % folder)
+        _logger.error("Not a directory: %s", folder)
         return Status.NOT_A_DIRECTORY
     bagit_file = folder / "bagit.txt"
     if not bagit_file.is_file():
-        print("File not found: %s" % bagit_file)
+        _logger.error("File not found: %s", bagit_file)
         return Status.BAG_NOT_FOUND
 
 
-
-    
     full_validation = args.cmd == "validate"
 
     ## BagIt check
     try:
         bag = BDBag(str(folder))
     except BagError as e:
-        print(e, file=sys.stderr)
+        _logger.fatal(e)
         return Status.INVALID_BAG
     except PermissionError as e:
-        print(e, file=sys.stderr)
+        _logger.fatal(e)
         return Status.PERMISSION_ERROR
     except OSError as e:
-        print(e, file=sys.stderr)
+        _logger.fatal(e)
         return Status.IO_ERROR
     # Unhandled errors will show Python stacktrace
 
@@ -797,7 +778,8 @@ def main(args=None):
         return invalid
 
     if full_validation:
-        print("Valid: %s" % folder)
+        if not args.quiet:
+            print("Valid CWLProv RO: %s" % folder)
         return Status.OK
 
     # Else, find the other commands
