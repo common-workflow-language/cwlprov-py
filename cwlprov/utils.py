@@ -22,3 +22,5 @@ __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/
 def first(iterable):
     return next(iter(iterable), None)
 
+def many(s):
+    return ", ".join(map(str, s))

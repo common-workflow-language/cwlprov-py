@@ -84,8 +84,6 @@ class Status(IntEnum):
     INVALID_BAG = 167
     UNSUPPORTED_CWLPROV_VERSION = 168
 
-# A shameful global variable for --absolute / --relative
-relative_paths = True
 
 
 def parse_args(args=None):
@@ -252,41 +250,6 @@ def validate_ro(ro, full_validation=False, args=None):
             return Status.UNSUPPORTED_CWLPROV_VERSION
     return Status.OK
 
-def _many(s):
-    return ", ".join(map(str, s))
-
-def info(ro, args):
-    # About RO?
-    if not args.quiet:
-        print(ro.bag.info.get("External-Description", "Research Object"))
-    print("ID: %s" % ro.id)
-    cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
-    if cwlprov:
-        print("Profile: %s" % _many(cwlprov))
-    w = ro.workflow_id
-    if w:
-        print("Workflow ID: %s" % w)
-    when = ro.bag.info.get("Bagging-Date")
-    if when:
-        print("Packaged: %s" % when)
-    return Status.OK
-
-def who(ro, args): 
-    # about RO?
-    createdBy = _many(ro.createdBy)
-    authoredBy = _many(ro.authoredBy)
-    if createdBy or not args.quiet:
-        print("Packaged By: %s" % createdBy or "(unknown)")
-    if authoredBy or not args.quiet:
-        print("Executed By: %s" % authoredBy or "(unknown)")
-    return Status.OK
-
-def path(p, ro):
-    p = ro.resolve_path(str(p))
-    if relative_paths:
-        return os.path.relpath(Path(p), Path())        
-    else:
-        return Path(p).absolute()
 
 def _as_uuid(w, args):
     try:
@@ -349,316 +312,6 @@ def _generation(activity_id, prov_doc, args):
             time_part = ""        
         print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
 
-def inputs(ro, args):
-    wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
-    a_uri,a_uuid,a_name = _wf_id(ro, args)
-    if not ro.provenance(wf_uri):
-        _logger.error("No provenance found for: %s", wf_name)
-        if args.run:
-            # We'll need to give up
-            return Status.UNKNOWN_RUN
-        else:
-            _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
-            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
-            if not ro.provenance(wf_uri):
-                _logger.error("No provenance found for: %s", wf_name)
-                return Status.UNKNOWN_RUN
-
-    try:
-        provenance = Provenance(ro, wf_uri)
-    except OSError:
-        # assume Error already printed by _prov_document
-        return Status.UNKNOWN_RUN
-    
-    activity = provenance.activity(a_uri)
-    if not activity:
-        _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
-        if not args.run and args.hints:
-            print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
-        return Status.UNKNOWN_RUN
-    activity_id = activity.id
-
-    if wf_uri != a_uri:
-        _logger.info("Inputs for step %s in workflow %s", a_name, wf_name)
-    else:
-        _logger.info("Inputs for workflow %s", wf_name)
-
-    job = {}
-    
-    usage = activity.usage()
-    for u in usage:
-
-        entity_id = u.entity_id
-        role = u.role
-
-        # Naively assume CWL identifier structure of URI
-        if not role:
-            _logger.warning("Unknown role for usage %s, skipping input", u)
-            role_name = None
-            continue
-        
-        # poor mans CWL parameter URI deconstruction
-        role_name = str(role)
-        role_name = role_name.split("/")[-1]
-        role_name = urllib.parse.unquote(role_name)
-        
-        if args.parameters and not args.quiet:            
-            print("Input %s:" % role_name) 
-        time = u.time
-        entity = u.entity()
-        if not entity:
-            _logger.warning("No provenance for used entity %s", entity_id)
-            continue
-
-        if args.verbose:
-            print(entity)
-        file_candidates = [entity]
-        file_candidates.extend(entity.specializationOf())
-        
-        for file_candidate in file_candidates:
-            bundled = ro.bundledAs(uri=file_candidate.uri)
-            if not bundled:
-                continue
-            if args.verbose:
-                print(bundled)
-            bundled_path = path(bundled, ro)
-            job[role_name] = {}
-            job[role_name]["class"] = "File"
-            job[role_name]["path"] = str(bundled_path)
-            print(bundled_path)
-            break
-
-        # Perhaps it has prov:value ? 
-        value = entity.value
-        if value is not None: # but might be False
-            job[role_name] = value
-            print(value)
-    print(json.dumps(job))
-
-def outputs(ro, args):
-    wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
-    a_uri,a_uuid,a_name = _wf_id(ro, args)
-    if not ro.provenance(wf_uri):
-        if args.run:
-            _logger.error("No provenance found for: %s in", wf_name)
-            # We'll need to give up
-            return Status.UNKNOWN_RUN
-        else:
-            _logger.debug("No provenance found for: %s in", wf_name)
-            _logger.info("Assuming primary run --run %s", ro.workflow_id)
-            wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
-            if not ro.provenance(wf_uri):
-                _logger.error("No provenance found for: %s", wf_name)
-                return Status.UNKNOWN_RUN
-
-    prov_doc = _prov_document(ro, wf_uri, args)
-    if not prov_doc:
-        # Error already printed by _prov_document
-        return Status.UNKNOWN_RUN
-
-    activity_id = Identifier(a_uri)
-    activity = first(prov_doc.get_record(activity_id))
-    if not activity:
-        _logger.error("Provenance %s does not describe step %s", wf_name, a_uri)
-        if not args.run and args.hints:
-            print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
-        return Status.UNKNOWN_RUN
-    if args.verbose:
-        if wf_uri != a_uri:
-            _logger.info("Outputs for step %s in workflow %s", (a_name, wf_name))
-        else:
-            _logger.info("Outputs for workflow %s", (wf_name))
-
-    gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
-    for g in gen:
-        if args.verbose:
-            print(g)
-        entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
-        role = _prov_attr(PROV_ROLE, g)
-        if args.parameters and not args.quiet:
-            if isinstance(role, QualifiedName):
-                role_name = role.localpart
-            else:
-                role_name = str(role)
-            print("Output %s:" % role_name) 
-        time = _prov_attr(PROV_ATTR_TIME, g)
-        entity = first(prov_doc.get_record(entity_id))
-        if not entity:
-            _logger.warning("No provenance for generated entity %s", entity_id)
-            continue
-
-        file_candidates = [entity]
-        general_id = None
-        specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
-        if specializations:
-            specialization = first(specializations)
-            if args.verbose:
-                print(specialization)
-            general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
-            generalEntity = general_id and first(prov_doc.get_record(general_id))
-            if args.verbose and generalEntity:
-                print(generalEntity)
-            file_candidates.append(generalEntity)
-        
-        for file_candidate in file_candidates:
-            bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
-            if not bundled:
-                continue
-            if args.verbose:
-                print(bundled)
-            bundled_path = path(bundled, ro)
-            print(bundled_path)
-            break
-
-        # Perhaps it has prov:value ? 
-        value = _prov_attr(PROV_VALUE, entity)
-        if not value is None: # might be False
-            print(value)        
-
-def runs(ro, args):
-    for run in ro.resources_with_provenance():
-        name = run.replace("urn:uuid:", "")
-        
-        if args.verbose or not args.quiet:
-            # Also load up the provenance to find its name
-            prov_doc = _prov_document(ro, run, args)
-            if not prov_doc:
-                print(name)
-                _logger.warning("No provenance found for: %s", name)
-                continue
-            
-            activity_id = Identifier(run)
-            activity = first(prov_doc.get_record(activity_id))
-            if not activity:
-                _logger.error("Provenance does not describe activity %s", run)
-                return Status.UNKNOWN_RUN
-            label = first(activity.get_attribute("prov:label")) or ""
-            is_master = run == ro.workflow_id
-            print("%s %s %s" % (name, is_master and "*" or " ", label))
-        else:
-            print(name)
-    if args.hints and not args.quiet:
-        print("Legend:")
-        print(" * master workflow")
-
-
-def run(ro, args):
-    uri,uuid,name = _wf_id(ro, args)
-    if not ro.provenance(uri):
-        _logger.error("No provenance found for: %s", name)
-        #if args.hints:
-        #    print("Try --search to examine all provenance files")
-        return Status.UNKNOWN_RUN
-
-    prov_doc = _prov_document(ro, uri, args)
-    if not prov_doc:
-        # Error already printed by _prov_document
-        return Status.UNKNOWN_RUN
-
-    if args.verbose:
-        print("Workflow run:",  name)
-    activity_id = Identifier(uri)
-    activity = first(prov_doc.get_record(activity_id))
-    if not activity:
-        _logger.error("Provenance does not describe activity %s", uri)
-        return Status.UNKNOWN_RUN
-    if args.verbose:
-        print(activity)
-    label = ""
-    if args.labels:
-        label = " %s " % (first(activity.get_attribute("prov:label")) or "")
-    
-    start = first(_prov_with_attr(prov_doc, ProvStart, activity_id))
-    start_time = start and _prov_attr(PROV_ATTR_TIME, start)
-    end = first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
-    end_time = end and _prov_attr(PROV_ATTR_TIME, end)
-    
-    
-
-    if args.verbose and start:
-        print(start)
-    padded_start_time = ""
-    if args.end and args.start:
-        # 2 columns
-        padded_start_time = "%s %s " % (start_time, TIME_PADDING)        
-    elif args.end or args.start:
-        # 1 column, we don't care which
-        padded_start_time = "%s " % (start_time)
-    print("%sFlow %s [%s" % (padded_start_time, name, label))
-
-    # inputs
-    _usage(activity_id, prov_doc, args)
-        
-    # steps
-    have_nested = False
-    if args.steps:
-        started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
-        steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
-        for child in steps:
-            c_activity = first(prov_doc.get_record(child))
-            if args.verbose:
-                print(c_activity)
-
-            c_label = ""
-            if args.labels:
-                c_label = " %s " % (first(c_activity.get_attribute("prov:label")) or "")
-            c_start = first(_prov_with_attr(prov_doc, ProvStart, child))
-            c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
-            c_end = first(_prov_with_attr(prov_doc, ProvEnd, child))
-            c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
-
-            c_duration = ""
-            if args.duration:
-                if c_start_time and c_end_time:
-                    c_duration = " (%s)" % (c_end_time - c_start_time)
-                else:
-                    c_duration = " (unknown duration)"
-
-            c_provenance = ro.provenance(child.uri)
-            have_nested = have_nested or c_provenance
-            c_id = str(child.uri).replace("urn:uuid:", "")
-            c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
-            c_end_time = args.end and "%s " % (c_end_time or TIME_PADDING)
-            print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
-            _usage(child, prov_doc, args)
-            _generation(child, prov_doc, args)
-
-
-
-    # generated
-    _generation(activity_id, prov_doc, args)
-
-    if args.verbose and end:
-        print(end)
-
-    # end
-    padded_end_time = ""
-    if args.end and args.start:
-        padded_end_time = "%s %s " % (TIME_PADDING, end_time)        
-    elif args.end or args.start:
-        padded_end_time = "%s " % (end_time)
-
-    w_duration = ""
-    if args.duration:
-        if start_time and end_time:
-            w_duration = " (%s)" % (end_time - start_time)
-        else:
-            w_duration = " (unknown duration)"
-
-    print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
-
-    if args.hints and not args.quiet:
-        print("Legend:")
-        print("  [ Workflow start")
-        if args.inputs:
-            print("  < Used as input")
-        if args.outputs:
-            print("  > Generated as output")
-        if have_nested:
-            print("  * Nested provenance, use UUID to explore: cwlprov run %s" % c_id)
-        print("  ] Workflow end")
-
-    return Status.OK
 
 
 MEDIA_TYPES = {
@@ -695,27 +348,6 @@ def _prov_document(ro, uri, args):
     return None
 
 
-def prov(ro, args):
-    uri,uuid,name = _wf_id(ro, args)
-
-    if args.format == "files":
-        for prov in ro.provenance(uri) or ():
-            if args.formats:
-                format = ro.mediatype(prov) or ""
-                format = EXTENSIONS.get(format, format)
-                print("%s %s" % (format, (path(prov, ro))))
-            else:
-                print("%s" % path(prov, ro))
-    else:
-        media_type = MEDIA_TYPES.get(args.format, args.format)
-        prov = _prov_format(ro, uri, media_type)
-        if not prov:
-            _logger.error("Unrecognized format: %s", args.format)
-            return Status.UNKNOWN_FORMAT
-        with prov.open(encoding="UTF-8") as f:
-            shutil.copyfileobj(f, sys.stdout)
-            print() # workaround for missing trailing newline
-    return Status.OK
 
 def _set_log_level(quiet=None, verbose=0):
     if quiet: # -q
@@ -728,93 +360,481 @@ def _set_log_level(quiet=None, verbose=0):
         log_level = logging.DEBUG            
     logging.basicConfig(level=log_level)
 
-def main(args=None):
-    # type: (...) -> None
-    """cwlprov command line tool"""
-    args = parse_args(args)
-    
-    global relative_paths
-    if args.relative is not None:
-        relative_paths = args.relative
-    else:
-        if args.directory and Path(args.directory).is_absolute():
-            # absolute if -d is absolute
-            relative_paths = False
+class Tool:
+    def __init__(self, args=None):
+        self.args = parse_args(args)
+
+    def main(self):
+        # type: (...) -> None
+        """cwlprov command line tool"""
+        args = self.args
+                
+        if args.relative is not None:
+            self.relative_paths = args.relative
         else:
-            # default: relative if -d is relative
-            relative_paths = True
-            # FIXME: What if -d ../../ ? 
-    
-    if args.quiet and args.verbose:
-        _logger.error("Incompatible parameters: --quiet --verbose")
-        return Status.UNKNOWN_COMMAND
-    _set_log_level(args.quiet, args.verbose)
+            if args.directory and Path(args.directory).is_absolute():
+                # absolute if -d is absolute
+                self.relative_paths = False
+            else:
+                # default: relative if -d is relative
+                self.relative_paths = True
+                # FIXME: What if -d ../../ ? 
+        
+        if args.quiet and args.verbose:
+            _logger.error("Incompatible parameters: --quiet --verbose")
+            return Status.UNKNOWN_COMMAND
+        _set_log_level(args.quiet, args.verbose)
 
-    folder = args.directory or _determine_bagit_folder()
-    if not folder:        
-        _logger.error("Could not find bagit.txt, try cwlprov -d mybag/")
-        return Status.BAG_NOT_FOUND
-    folder = pathlib.Path(folder)
-    if not folder.exists():
-        _logger.error("No such file or directory: %s",  folder)
-        return Status.BAG_NOT_FOUND
-    if not folder.is_dir():
-        _logger.error("Not a directory: %s", folder)
-        return Status.NOT_A_DIRECTORY
-    bagit_file = folder / "bagit.txt"
-    if not bagit_file.is_file():
-        _logger.error("File not found: %s", bagit_file)
-        return Status.BAG_NOT_FOUND
+        folder = args.directory or _determine_bagit_folder()
+        if not folder:        
+            _logger.error("Could not find bagit.txt, try cwlprov -d mybag/")
+            return Status.BAG_NOT_FOUND
+        folder = pathlib.Path(folder)
+        if not folder.exists():
+            _logger.error("No such file or directory: %s",  folder)
+            return Status.BAG_NOT_FOUND
+        if not folder.is_dir():
+            _logger.error("Not a directory: %s", folder)
+            return Status.NOT_A_DIRECTORY
+        bagit_file = folder / "bagit.txt"
+        if not bagit_file.is_file():
+            _logger.error("File not found: %s", bagit_file)
+            return Status.BAG_NOT_FOUND
 
 
-    full_validation = args.cmd == "validate"
-    _logger.info("Opening BagIt %s", folder)
-    ## BagIt check
-    try:
-        bag = BDBag(str(folder))
-    except BagError as e:
-        _logger.fatal(e)
-        return Status.INVALID_BAG
-    except PermissionError as e:
-        _logger.fatal(e)
-        return Status.PERMISSION_ERROR
-    except OSError as e:
-        _logger.fatal(e)
-        return Status.IO_ERROR
-    # Unhandled errors will show Python stacktrace
+        full_validation = args.cmd == "validate"
+        _logger.info("Opening BagIt %s", folder)
+        ## BagIt check
+        try:
+            bag = BDBag(str(folder))
+        except BagError as e:
+            _logger.fatal(e)
+            return Status.INVALID_BAG
+        except PermissionError as e:
+            _logger.fatal(e)
+            return Status.PERMISSION_ERROR
+        except OSError as e:
+            _logger.fatal(e)
+            return Status.IO_ERROR
+        # Unhandled errors will show Python stacktrace
 
-    invalid = validate_bag(bag, full_validation)
-    if invalid:
-        return invalid
-    
-    ro = ResearchObject(bag)
-    invalid = validate_ro(ro, full_validation, args)
-    if invalid:
-        return invalid
+        invalid = validate_bag(bag, full_validation)
+        if invalid:
+            return invalid
+        
+        self.ro = ResearchObject(bag)
+        invalid = validate_ro(self.ro, full_validation, args)
+        if invalid:
+            return invalid
 
-    if full_validation:
+        if full_validation:
+            if not args.quiet:
+                print("Valid CWLProv RO: %s" % folder)
+            return Status.OK
+
+        # Else, find the other commands
+        COMMANDS = {
+            "info": self.info,
+            "who": self.who,
+            "prov": self.prov,
+            "inputs": self.inputs,
+            "outputs": self.outputs,
+            "run": self.run,
+            "runs": self.runs,
+        }
+        
+        cmd = COMMANDS.get(args.cmd)
+        if not cmd:
+            # Light-weight validation
+            if not args.quiet:
+                print("Detected CWLProv research Object: %s" % folder)
+            return Status.OK
+        
+        return cmd()
+
+    def _path(self, path):
+        p = self.ro.resolve_path(str(path))
+        if self.relative_paths:
+            return os.path.relpath(Path(p), Path())        
+        else:
+            return Path(p).absolute()        
+
+    def info(self):
+        ro = self.ro
+        args = self.args
+
+        # About RO?
         if not args.quiet:
-            print("Valid CWLProv RO: %s" % folder)
+            print(ro.bag.info.get("External-Description", "Research Object"))
+        print("ID: %s" % ro.id)
+        cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
+        if cwlprov:
+            print("Profile: %s" % many(cwlprov))
+        w = ro.workflow_id
+        if w:
+            print("Workflow ID: %s" % w)
+        when = ro.bag.info.get("Bagging-Date")
+        if when:
+            print("Packaged: %s" % when)
         return Status.OK
 
-    # Else, find the other commands
-    COMMANDS = {
-        "info": info,
-        "run": run,
-        "runs": runs,
-        "who": who,
-        "prov": prov,
-        "inputs": inputs,
-        "outputs": outputs,
+    def who(self): 
+        ro = self.ro
+        args = self.args
 
-    }
-    
-    cmd = COMMANDS.get(args.cmd)
-    if not cmd:
-        # Light-weight validation
-        if not args.quiet:
-            print("Detected CWLProv research Object: %s" % folder)
+        # about RO?
+        createdBy = many(ro.createdBy)
+        authoredBy = many(ro.authoredBy)
+        if createdBy or not args.quiet:
+            print("Packaged By: %s" % createdBy or "(unknown)")
+        if authoredBy or not args.quiet:
+            print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
-    
-    return cmd(ro, args)
 
+    def prov(self):
+        ro = self.ro
+        args = self.args
+
+        uri,uuid,name = _wf_id(ro, args)
+
+        if args.format == "files":
+            for prov in ro.provenance(uri) or ():
+                if args.formats:
+                    format = ro.mediatype(prov) or ""
+                    format = EXTENSIONS.get(format, format)
+                    print("%s %s" % (format, (self._path(prov))))
+                else:
+                    print("%s" % self._path(prov))
+        else:
+            media_type = MEDIA_TYPES.get(args.format, args.format)
+            prov = _prov_format(ro, uri, media_type)
+            if not prov:
+                _logger.error("Unrecognized format: %s", args.format)
+                return Status.UNKNOWN_FORMAT
+            with prov.open(encoding="UTF-8") as f:
+                shutil.copyfileobj(f, sys.stdout)
+                print() # workaround for missing trailing newline
+        return Status.OK
+
+    def inputs(self):
+        ro = self.ro
+        args = self.args
+        wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
+        a_uri,a_uuid,a_name = _wf_id(ro, args)
+        if not ro.provenance(wf_uri):
+            _logger.error("No provenance found for: %s", wf_name)
+            if args.run:
+                # We'll need to give up
+                return Status.UNKNOWN_RUN
+            else:
+                _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
+                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
+                if not ro.provenance(wf_uri):
+                    _logger.error("No provenance found for: %s", wf_name)
+                    return Status.UNKNOWN_RUN
+
+        try:
+            provenance = Provenance(ro, wf_uri)
+        except OSError:
+            # assume Error already printed by _prov_document
+            return Status.UNKNOWN_RUN
+        
+        activity = provenance.activity(a_uri)
+        if not activity:
+            _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
+            if not args.run and args.hints:
+                print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
+            return Status.UNKNOWN_RUN
+        activity_id = activity.id
+
+        if wf_uri != a_uri:
+            _logger.info("Inputs for step %s in workflow %s", a_name, wf_name)
+        else:
+            _logger.info("Inputs for workflow %s", wf_name)
+
+        job = {}
+        
+        usage = activity.usage()
+        for u in usage:
+
+            entity_id = u.entity_id
+            role = u.role
+
+            # Naively assume CWL identifier structure of URI
+            if not role:
+                _logger.warning("Unknown role for usage %s, skipping input", u)
+                role_name = None
+                continue
+            
+            # poor mans CWL parameter URI deconstruction
+            role_name = str(role)
+            role_name = role_name.split("/")[-1]
+            role_name = urllib.parse.unquote(role_name)
+            
+            if args.parameters and not args.quiet:            
+                print("Input %s:" % role_name) 
+            time = u.time
+            entity = u.entity()
+            if not entity:
+                _logger.warning("No provenance for used entity %s", entity_id)
+                continue
+
+            if args.verbose:
+                print(entity)
+            file_candidates = [entity]
+            file_candidates.extend(entity.specializationOf())
+            
+            for file_candidate in file_candidates:
+                bundled = ro.bundledAs(uri=file_candidate.uri)
+                if not bundled:
+                    continue
+                if args.verbose:
+                    print(bundled)
+                bundled_path = self._path(bundled)
+                job[role_name] = {}
+                job[role_name]["class"] = "File"
+                job[role_name]["path"] = str(bundled_path)
+                print(bundled_path)
+                break
+
+            # Perhaps it has prov:value ? 
+            value = entity.value
+            if value is not None: # but might be False
+                job[role_name] = value
+                print(value)
+        print(json.dumps(job))
+
+    def outputs(self):
+        ro = self.ro
+        args = self.args
+        wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
+        a_uri,a_uuid,a_name = _wf_id(ro, args)
+        if not ro.provenance(wf_uri):
+            if args.run:
+                _logger.error("No provenance found for: %s in", wf_name)
+                # We'll need to give up
+                return Status.UNKNOWN_RUN
+            else:
+                _logger.debug("No provenance found for: %s in", wf_name)
+                _logger.info("Assuming primary run --run %s", ro.workflow_id)
+                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
+                if not ro.provenance(wf_uri):
+                    _logger.error("No provenance found for: %s", wf_name)
+                    return Status.UNKNOWN_RUN
+
+        prov_doc = _prov_document(ro, wf_uri, args)
+        if not prov_doc:
+            # Error already printed by _prov_document
+            return Status.UNKNOWN_RUN
+
+        activity_id = Identifier(a_uri)
+        activity = first(prov_doc.get_record(activity_id))
+        if not activity:
+            _logger.error("Provenance %s does not describe step %s", wf_name, a_uri)
+            if not args.run and args.hints:
+                print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
+            return Status.UNKNOWN_RUN
+        if args.verbose:
+            if wf_uri != a_uri:
+                _logger.info("Outputs for step %s in workflow %s", (a_name, wf_name))
+            else:
+                _logger.info("Outputs for workflow %s", (wf_name))
+
+        gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
+        for g in gen:
+            if args.verbose:
+                print(g)
+            entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
+            role = _prov_attr(PROV_ROLE, g)
+            if args.parameters and not args.quiet:
+                if isinstance(role, QualifiedName):
+                    role_name = role.localpart
+                else:
+                    role_name = str(role)
+                print("Output %s:" % role_name) 
+            time = _prov_attr(PROV_ATTR_TIME, g)
+            entity = first(prov_doc.get_record(entity_id))
+            if not entity:
+                _logger.warning("No provenance for generated entity %s", entity_id)
+                continue
+
+            file_candidates = [entity]
+            general_id = None
+            specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
+            if specializations:
+                specialization = first(specializations)
+                if args.verbose:
+                    print(specialization)
+                general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
+                generalEntity = general_id and first(prov_doc.get_record(general_id))
+                if args.verbose and generalEntity:
+                    print(generalEntity)
+                file_candidates.append(generalEntity)
+            
+            for file_candidate in file_candidates:
+                bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
+                if not bundled:
+                    continue
+                if args.verbose:
+                    print(bundled)
+                bundled_path = self._path(bundled)
+                print(bundled_path)
+                break
+
+            # Perhaps it has prov:value ? 
+            value = _prov_attr(PROV_VALUE, entity)
+            if not value is None: # might be False
+                print(value)        
+
+    def runs(self):
+        ro = self.ro
+        args = self.args        
+        for run in ro.resources_with_provenance():
+            name = run.replace("urn:uuid:", "")
+            
+            if args.verbose or not args.quiet:
+                # Also load up the provenance to find its name
+                prov_doc = _prov_document(ro, run, args)
+                if not prov_doc:
+                    print(name)
+                    _logger.warning("No provenance found for: %s", name)
+                    continue
+                
+                activity_id = Identifier(run)
+                activity = first(prov_doc.get_record(activity_id))
+                if not activity:
+                    _logger.error("Provenance does not describe activity %s", run)
+                    return Status.UNKNOWN_RUN
+                label = first(activity.get_attribute("prov:label")) or ""
+                is_master = run == ro.workflow_id
+                print("%s %s %s" % (name, is_master and "*" or " ", label))
+            else:
+                print(name)
+        if args.hints and not args.quiet:
+            print("Legend:")
+            print(" * master workflow")
+
+
+    def run(self):
+        ro = self.ro
+        args = self.args
+        uri,uuid,name = _wf_id(ro, args)
+        if not ro.provenance(uri):
+            _logger.error("No provenance found for: %s", name)
+            #if args.hints:
+            #    print("Try --search to examine all provenance files")
+            return Status.UNKNOWN_RUN
+
+        prov_doc = _prov_document(ro, uri, args)
+        if not prov_doc:
+            # Error already printed by _prov_document
+            return Status.UNKNOWN_RUN
+
+        if args.verbose:
+            print("Workflow run:",  name)
+        activity_id = Identifier(uri)
+        activity = first(prov_doc.get_record(activity_id))
+        if not activity:
+            _logger.error("Provenance does not describe activity %s", uri)
+            return Status.UNKNOWN_RUN
+        if args.verbose:
+            print(activity)
+        label = ""
+        if args.labels:
+            label = " %s " % (first(activity.get_attribute("prov:label")) or "")
+        
+        start = first(_prov_with_attr(prov_doc, ProvStart, activity_id))
+        start_time = start and _prov_attr(PROV_ATTR_TIME, start)
+        end = first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
+        end_time = end and _prov_attr(PROV_ATTR_TIME, end)
+        
+        
+
+        if args.verbose and start:
+            print(start)
+        padded_start_time = ""
+        if args.end and args.start:
+            # 2 columns
+            padded_start_time = "%s %s " % (start_time, TIME_PADDING)        
+        elif args.end or args.start:
+            # 1 column, we don't care which
+            padded_start_time = "%s " % (start_time)
+        print("%sFlow %s [%s" % (padded_start_time, name, label))
+
+        # inputs
+        _usage(activity_id, prov_doc, args)
+            
+        # steps
+        have_nested = False
+        if args.steps:
+            started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
+            steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
+            for child in steps:
+                c_activity = first(prov_doc.get_record(child))
+                if args.verbose:
+                    print(c_activity)
+
+                c_label = ""
+                if args.labels:
+                    c_label = " %s " % (first(c_activity.get_attribute("prov:label")) or "")
+                c_start = first(_prov_with_attr(prov_doc, ProvStart, child))
+                c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
+                c_end = first(_prov_with_attr(prov_doc, ProvEnd, child))
+                c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
+
+                c_duration = ""
+                if args.duration:
+                    if c_start_time and c_end_time:
+                        c_duration = " (%s)" % (c_end_time - c_start_time)
+                    else:
+                        c_duration = " (unknown duration)"
+
+                c_provenance = ro.provenance(child.uri)
+                have_nested = have_nested or c_provenance
+                c_id = str(child.uri).replace("urn:uuid:", "")
+                c_start_time = args.start and ("%s " % c_start_time or "(unknown start time)     ")
+                c_end_time = args.end and "%s " % (c_end_time or TIME_PADDING)
+                print("%s%sStep %s %s%s%s" % (c_start_time or "", c_end_time or "", c_id, c_provenance and "*" or " ", c_label, c_duration))
+                _usage(child, prov_doc, args)
+                _generation(child, prov_doc, args)
+
+
+
+        # generated
+        _generation(activity_id, prov_doc, args)
+
+        if args.verbose and end:
+            print(end)
+
+        # end
+        padded_end_time = ""
+        if args.end and args.start:
+            padded_end_time = "%s %s " % (TIME_PADDING, end_time)        
+        elif args.end or args.start:
+            padded_end_time = "%s " % (end_time)
+
+        w_duration = ""
+        if args.duration:
+            if start_time and end_time:
+                w_duration = " (%s)" % (end_time - start_time)
+            else:
+                w_duration = " (unknown duration)"
+
+        print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
+
+        if args.hints and not args.quiet:
+            print("Legend:")
+            print("  [ Workflow start")
+            if args.inputs:
+                print("  < Used as input")
+            if args.outputs:
+                print("  > Generated as output")
+            if have_nested:
+                print("  * Nested provenance, use UUID to explore: cwlprov run %s" % c_id)
+            print("  ] Workflow end")
+
+        return Status.OK        
+
+def main(args=None):
+    tool = Tool(args)
+    return tool.main()
