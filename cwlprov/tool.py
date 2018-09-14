@@ -219,7 +219,6 @@ def _as_uuid(w):
         # return -as-is
         return w, None, str(w)
 
-
 def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACTIVITY):
     for elem in prov_doc.get_records(prov_type):
         if (with_attrib, attrib_value) in elem.attributes:
@@ -227,8 +226,6 @@ def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACT
 
 def _prov_attr(attr, elem):
     return first(elem.get_attribute(attr))
-
-
 
 
 MEDIA_TYPES = {
@@ -448,13 +445,13 @@ class Tool:
         # About RO?
         if not args.quiet:
             self.print(ro.bag.info.get("External-Description", "Research Object"))
-        self.print("ID: %s" % ro.id)
+        self.print("Research Object ID: %s" % ro.id)
         cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
         if cwlprov:
             self.print("Profile: %s" % many(cwlprov))
         w = ro.workflow_id
         if w:
-            self.print("Workflow ID: %s" % w)
+            self.print("Workflow run ID: %s" % w)
         when = ro.bag.info.get("Bagging-Date")
         if when:
             self.print("Packaged: %s" % when)
@@ -467,13 +464,11 @@ class Tool:
         # about RO?
         createdBy = many(ro.createdBy)
         authoredBy = many(ro.authoredBy)
-        if createdBy or not args.quiet:
+        if createdBy or not args.quiet: # skip (unknown) on -q)
             self.print("Packaged By: %s" % createdBy or "(unknown)")
         if authoredBy or not args.quiet:
             self.print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
-
-
 
     def prov(self):
         ro = self.ro
