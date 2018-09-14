@@ -512,12 +512,13 @@ class Tool:
         args = self.args
         wf_uri,wf_uuid,wf_name = self._wf_id(args.run)
         a_uri,a_uuid,a_name = self._wf_id()
-        if not ro.provenance(wf_uri):
-            _logger.error("No provenance found for: %s", wf_name)
+        if not ro.provenance(wf_uri):            
             if args.run:
+                _logger.error("No provenance found for: %s", wf_name)
                 # We'll need to give up
                 return Status.UNKNOWN_RUN
             else:
+                _logger.debug("No provenance found for: %s", wf_name)
                 _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
                 wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
                 if not ro.provenance(wf_uri):
