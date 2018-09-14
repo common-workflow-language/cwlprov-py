@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-  
 ## © 2018 Software Freedom Conservancy (SFC)
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
