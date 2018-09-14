@@ -42,10 +42,15 @@ MEDIA_TYPES = {
 EXTENSIONS = dict((v,k) for (k,v) in MEDIA_TYPES.items())
 
 def _as_identifier(uri_or_identifier):
+    if not uri_or_identifier:
+        return None
     if isinstance(uri_or_identifier, Identifier):
         return uri_or_identifier
     else:
         return Identifier(str(uri_or_identifier))
+
+def _prov_attr(attr, elem):
+    return first(elem.get_attribute(attr))
 
 class Provenance:
     def __init__(self, ro, run=None):
@@ -63,13 +68,20 @@ class Provenance:
     def uri(self):
         return self.run_id.uri
 
+    def entity(self, uri):
+        entity = first(self.prov_doc.get_record(_as_identifier(uri)))
+        if not entity:
+            _logger.warning("Entity %s not found in %s", uri, self)
+            return None
+        return Entity(self, entity)
+
     def activity(self, uri=None):
         if not uri:
             uri = self.run_id
         activity_id = _as_identifier(uri)
         activity = first(self.prov_doc.get_record(activity_id))
         if not activity:
-            _logger.warning("Provenance %s does not describe step %s", self, uri)
+            _logger.warning("Activity %s not found in %s", uri, self)
             return None
         return Activity(self, activity)
 
@@ -95,16 +107,96 @@ class Provenance:
         _logger.warn("No PROV compatible format found for %s", self.uri)
         return None, None
 
-
-class Activity:
-    def __init__(self, provenance, activity):
-        self.provenance = provenance
-        self.prov_activity = activity
+    def record_with_attr(self, prov_type, attrib_value, with_attrib=PROV_ATTR_ACTIVITY):
+        for elem in self.prov_doc.get_records(prov_type):
+            if (with_attrib, attrib_value) in elem.attributes:
+                yield elem
     
+
+class _Prov:
+    def __init__(self, provenance, record):
+        self.provenance = provenance
+        self.record = record
+        _logger.info(record)
+
     @property
     def id(self):
-        return self.prov_activity.identifier
+        return self.record.identifier
 
     @property
     def uri(self):
-        return self.id.uri
+        i = self.id
+        return i and i.uri
+    
+    def __repr__(self):
+        return "<%s %s>" % (self.__class__.__name__, self.uri)
+    
+    def __str__(self):
+        return self.record.get_provn()
+
+    def _prov_attr(self, attr):
+        return first(self._prov_attrs(attr))
+
+    def _prov_attrs(self, attr):
+        return self.record.get_attribute(attr)
+
+
+class Activity(_Prov):    
+    def usage(self, role=None):
+        usage = self.provenance.record_with_attr(ProvUsage, self.id, PROV_ATTR_ACTIVITY)
+        return (Usage(self.provenance, u) for u in usage)
+
+class Specialization(_Prov):
+    
+    @property
+    def general_entity_id(self):
+        return  self._prov_attr(PROV_ATTR_GENERAL_ENTITY)
+
+    def general_entity(self):
+        g = self.general_entity_id
+        return g and self.provenance.entity(g)
+
+    @property
+    def specific_entity_id(self):
+        return self._prov_attr(PROV_ATTR_SPECIFIC_ENTITY)
+
+    def specific_entity(self):
+        s = self.specific_entity_id
+        return s and self.provenance.entity(g)
+
+class Entity(_Prov):
+
+    def specializationOf(self):
+        records = self.provenance.record_with_attr(ProvSpecialization, self.id, PROV_ATTR_SPECIFIC_ENTITY)
+        specializations = (Specialization(self.provenance, s) for s in records)
+        return (s.general_entity() for s in specializations)
+
+    def generalizationOf(self):
+        records = self.provenance.record_with_attr(ProvSpecialization, self.id, PROV_ATTR_GENERAL_ENTITY)
+        specializations = (Specialization(self.provenance, s) for s in records)
+        return (s.specific_entity() for s in specializations)
+
+    @property
+    def value(self):
+        return self._prov_attr(PROV_VALUE)
+
+class Usage(_Prov):
+
+    @property
+    def entity_id(self):
+        return self._prov_attr(PROV_ATTR_ENTITY)
+
+    def entity(self):
+        e_id = self.entity_id
+        return e_id and self.provenance.entity(e_id)
+
+    @property
+    def role(self):
+        return self._prov_attr(PROV_ROLE)
+
+    def time(self):
+        return self._prov_attr(PROV_ATTR_TIME)
+
+
+
+    

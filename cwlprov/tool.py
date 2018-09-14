@@ -384,12 +384,14 @@ def inputs(ro, args):
             print("Inputs for workflow %s" % (wf_name))
 
     job = {}
-    usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
+    
+    usage = activity.usage()
     for u in usage:
         if args.verbose:
             print(u)
-        entity_id = _prov_attr(PROV_ATTR_ENTITY, u)
-        role = _prov_attr(PROV_ROLE, u)
+
+        entity_id = u.entity_id
+        role = u.role
 
         # Naively assume CWL identifier structure of URI
         if not role:
@@ -404,8 +406,8 @@ def inputs(ro, args):
         
         if args.parameters and not args.quiet:            
             print("Input %s:" % role_name) 
-        time = _prov_attr(PROV_ATTR_TIME, u)
-        entity = first(prov_doc.get_record(entity_id))
+        time = u.time
+        entity = u.entity()
         if not entity:
             print("No provenance for used entity %s" % entity_id, file=sys.stderr)
             continue
@@ -414,20 +416,11 @@ def inputs(ro, args):
             print(entity)
 
         file_candidates = [entity]
-        general_id = None
-        specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
-        if specializations:
-            specialization = first(specializations)
-            if args.verbose:
-                print(specialization)
-            general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
-            generalEntity = general_id and first(prov_doc.get_record(general_id))
-            if args.verbose and generalEntity:
-                print(generalEntity)
-            file_candidates.append(generalEntity)
+        for general in entity.specializationOf():
+            file_candidates.append(general)
         
         for file_candidate in file_candidates:
-            bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
+            bundled = ro.bundledAs(uri=file_candidate.uri)
             if not bundled:
                 continue
             if args.verbose:
@@ -440,7 +433,7 @@ def inputs(ro, args):
             break
 
         # Perhaps it has prov:value ? 
-        value = _prov_attr(PROV_VALUE, entity)
+        value = entity.value
         if value is not None: # but might be False
             job[role_name] = value
             print(value)
