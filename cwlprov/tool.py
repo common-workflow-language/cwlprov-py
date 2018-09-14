@@ -21,29 +21,30 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
-import sys
-import argparse
-from functools import partial
-
-import dateutil.parser
-
-from cwlprov.ro import ResearchObject
-
 import arcp
+import argparse
 import bagit
-from uuid import UUID
 import bdbag
-from bdbag.bdbagit import BDBag, BagError
-import posixpath
+import dateutil.parser
+import errno
+import json
 import pathlib
-from pathlib import Path
+import posixpath
 import shutil
+import sys
+import urllib.parse
+
+from bdbag.bdbagit import BDBag, BagError
+from enum import IntEnum
+from functools import partial
+from pathlib import Path
 from prov.identifier import Identifier
 from prov.model import *
-from enum import IntEnum
-import urllib.parse
-import json
-import errno
+from uuid import UUID
+
+from .ro import ResearchObject
+from .prov import Provenance
+from .utils import *
 
 BAGIT_RO_PROFILES = (
     "https://w3id.org/ro/bagit/profile", 
@@ -291,16 +292,13 @@ def _wf_id(ro, args, run=None):
     # ensure consistent UUID URIs
     return _as_uuid(w, args)
 
-def _first(iterable):
-    return next(iter(iterable), None)
-
 def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACTIVITY):
     for elem in prov_doc.get_records(prov_type):
         if (with_attrib, attrib_value) in elem.attributes:
             yield elem
 
 def _prov_attr(attr, elem):
-    return _first(elem.get_attribute(attr))
+    return first(elem.get_attribute(attr))
 
 def _usage(activity_id, prov_doc, args):
     if not args.inputs:
@@ -361,15 +359,19 @@ def inputs(ro, args):
                 print("No provenance found for: %s" % wf_name, file=sys.stderr)
                 return Status.UNKNOWN_RUN
 
-    prov_doc = _prov_document(ro, wf_uri, args)
-    if not prov_doc:
-        # Error already printed by _prov_document
+    try:
+        provenance = Provenance(ro, wf_uri)
+    except OSError:
+        # assume Error already printed by _prov_document
         return Status.UNKNOWN_RUN
+    
 
-    activity_id = Identifier(a_uri)
-    activity = _first(prov_doc.get_record(activity_id))
+    prov_doc = provenance.prov_doc
+
+    activity = provenance.activity(a_uri)
+    activity_id = activity.id
     if not activity:
-        print("Provenance %s does not describe step %s" % (wf_name, a_uri), file=sys.stderr)
+        print("Provenance does not describe step %s: %s" % (wf_name, a_uri), file=sys.stderr)
         if not args.run and args.hints:
             print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
         return Status.UNKNOWN_RUN
@@ -382,7 +384,6 @@ def inputs(ro, args):
             print("Inputs for workflow %s" % (wf_name))
 
     job = {}
-
     usage = _prov_with_attr(prov_doc, ProvUsage, activity_id, PROV_ATTR_ACTIVITY)
     for u in usage:
         if args.verbose:
@@ -404,7 +405,7 @@ def inputs(ro, args):
         if args.parameters and not args.quiet:            
             print("Input %s:" % role_name) 
         time = _prov_attr(PROV_ATTR_TIME, u)
-        entity = _first(prov_doc.get_record(entity_id))
+        entity = first(prov_doc.get_record(entity_id))
         if not entity:
             print("No provenance for used entity %s" % entity_id, file=sys.stderr)
             continue
@@ -416,11 +417,11 @@ def inputs(ro, args):
         general_id = None
         specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
         if specializations:
-            specialization = _first(specializations)
+            specialization = first(specializations)
             if args.verbose:
                 print(specialization)
             general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
-            generalEntity = general_id and _first(prov_doc.get_record(general_id))
+            generalEntity = general_id and first(prov_doc.get_record(general_id))
             if args.verbose and generalEntity:
                 print(generalEntity)
             file_candidates.append(generalEntity)
@@ -468,7 +469,7 @@ def outputs(ro, args):
         return Status.UNKNOWN_RUN
 
     activity_id = Identifier(a_uri)
-    activity = _first(prov_doc.get_record(activity_id))
+    activity = first(prov_doc.get_record(activity_id))
     if not activity:
         print("Provenance %s does not describe step %s" % (wf_name, a_uri), file=sys.stderr)
         if not args.run and args.hints:
@@ -495,7 +496,7 @@ def outputs(ro, args):
                 role_name = str(role)
             print("Output %s:" % role_name) 
         time = _prov_attr(PROV_ATTR_TIME, g)
-        entity = _first(prov_doc.get_record(entity_id))
+        entity = first(prov_doc.get_record(entity_id))
         if not entity:
             print("No provenance for generated entity %s" % entity_id, file=sys.stderr)
             continue
@@ -507,11 +508,11 @@ def outputs(ro, args):
         general_id = None
         specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
         if specializations:
-            specialization = _first(specializations)
+            specialization = first(specializations)
             if args.verbose:
                 print(specialization)
             general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
-            generalEntity = general_id and _first(prov_doc.get_record(general_id))
+            generalEntity = general_id and first(prov_doc.get_record(general_id))
             if args.verbose and generalEntity:
                 print(generalEntity)
             file_candidates.append(generalEntity)
@@ -544,13 +545,13 @@ def runs(ro, args):
                 continue
             
             activity_id = Identifier(run)
-            activity = _first(prov_doc.get_record(activity_id))
+            activity = first(prov_doc.get_record(activity_id))
             if not activity:
                 print("Provenance does not describe activity %s" % run, file=sys.stderr)
                 return Status.UNKNOWN_RUN
             if args.verbose:
                 print(activity)        
-            label = _first(activity.get_attribute("prov:label")) or ""
+            label = first(activity.get_attribute("prov:label")) or ""
             is_master = run == ro.workflow_id
             print("%s %s %s" % (name, is_master and "*" or " ", label))
         else:
@@ -576,7 +577,7 @@ def run(ro, args):
     if args.verbose:
         print("Workflow run:",  name)
     activity_id = Identifier(uri)
-    activity = _first(prov_doc.get_record(activity_id))
+    activity = first(prov_doc.get_record(activity_id))
     if not activity:
         print("Provenance does not describe activity %s" % uri, file=sys.stderr)
         return Status.UNKNOWN_RUN
@@ -584,11 +585,11 @@ def run(ro, args):
         print(activity)
     label = ""
     if args.labels:
-        label = " %s " % (_first(activity.get_attribute("prov:label")) or "")
+        label = " %s " % (first(activity.get_attribute("prov:label")) or "")
     
-    start = _first(_prov_with_attr(prov_doc, ProvStart, activity_id))
+    start = first(_prov_with_attr(prov_doc, ProvStart, activity_id))
     start_time = start and _prov_attr(PROV_ATTR_TIME, start)
-    end = _first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
+    end = first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
     end_time = end and _prov_attr(PROV_ATTR_TIME, end)
     
     
@@ -613,16 +614,16 @@ def run(ro, args):
         started = _prov_with_attr(prov_doc, ProvStart, activity_id, PROV_ATTR_STARTER)
         steps = map(partial(_prov_attr, PROV_ATTR_ACTIVITY), started)
         for child in steps:
-            c_activity = _first(prov_doc.get_record(child))
+            c_activity = first(prov_doc.get_record(child))
             if args.verbose:
                 print(c_activity)
 
             c_label = ""
             if args.labels:
-                c_label = " %s " % (_first(c_activity.get_attribute("prov:label")) or "")
-            c_start = _first(_prov_with_attr(prov_doc, ProvStart, child))
+                c_label = " %s " % (first(c_activity.get_attribute("prov:label")) or "")
+            c_start = first(_prov_with_attr(prov_doc, ProvStart, child))
             c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
-            c_end = _first(_prov_with_attr(prov_doc, ProvEnd, child))
+            c_end = first(_prov_with_attr(prov_doc, ProvEnd, child))
             c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
 
             c_duration = ""
