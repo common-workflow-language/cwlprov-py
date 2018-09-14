@@ -184,10 +184,14 @@ def _determine_bagit_folder(folder=None):
     # and have resolved any symlinks
     folder = pathlib.Path(folder or "").absolute()
     while True:
+        _logger.debug("Determining bagit folder: %s", folder)
         bagit_file = folder / "bagit.txt"
         if bagit_file.is_file():
+            _logger.info("Detected %s", bagit_file)
             return folder
+        _logger.debug("%s not found", bagit_file)
         if folder == folder.parent:
+            _logger.info("No bagit.txt detected")
             return None
         folder = folder.parent
 
@@ -284,7 +288,7 @@ def _as_uuid(w, args):
         return (uuid.urn, uuid, str(uuid))
     except ValueError:
         if not args.quiet:
-            print("Warning: Invalid UUID %s" % w, file=sys.stderr)
+            logger.warn("Invalid UUID %s", w)
         # return -as-is
         return w, None, str(w)
 
@@ -360,16 +364,13 @@ def inputs(ro, args):
         # assume Error already printed by _prov_document
         return Status.UNKNOWN_RUN
     
-
-    prov_doc = provenance.prov_doc
-
     activity = provenance.activity(a_uri)
-    activity_id = activity.id
     if not activity:
         _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
         if not args.run and args.hints:
             print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
         return Status.UNKNOWN_RUN
+    activity_id = activity.id
 
     if wf_uri != a_uri:
         _logger.info("Inputs for step %s in workflow %s", a_name, wf_name)
@@ -380,8 +381,6 @@ def inputs(ro, args):
     
     usage = activity.usage()
     for u in usage:
-        if args.verbose:
-            print(u)
 
         entity_id = u.entity_id
         role = u.role
@@ -407,10 +406,8 @@ def inputs(ro, args):
 
         if args.verbose:
             print(entity)
-
         file_candidates = [entity]
-        for general in entity.specializationOf():
-            file_candidates.append(general)
+        file_candidates.extend(entity.specializationOf())
         
         for file_candidate in file_candidates:
             bundled = ro.bundledAs(uri=file_candidate.uri)
@@ -527,7 +524,7 @@ def runs(ro, args):
             activity_id = Identifier(run)
             activity = first(prov_doc.get_record(activity_id))
             if not activity:
-                _logger.error("Provenance does not describe activity %s" % run, file=sys.stderr)
+                _logger.error("Provenance does not describe activity %s", run)
                 return Status.UNKNOWN_RUN
             label = first(activity.get_attribute("prov:label")) or ""
             is_master = run == ro.workflow_id
@@ -753,7 +750,7 @@ def main(args=None):
 
 
     full_validation = args.cmd == "validate"
-
+    _logger.info("Opening BagIt %s", folder)
     ## BagIt check
     try:
         bag = BDBag(str(folder))

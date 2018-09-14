@@ -22,14 +22,19 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
-import pkg_resources
-from functools import partial
-import urllib.parse
-import pathlib
-import json
 import arcp
+import json
+import logging
+import pathlib
+import pkg_resources
+import urllib.parse
+
+from functools import partial
 from rdflib import Namespace, URIRef, Graph, Literal, BNode
 from rdflib.namespace import RDF,RDFS,SKOS,DCTERMS,FOAF,XSD,DC,OWL
+
+
+_logger = logging.getLogger(__name__)
 
 MANIFEST_PATH=pathlib.PurePosixPath("metadata/manifest.json")
 
@@ -38,8 +43,6 @@ def _resource_as_path(path):
     p = pathlib.Path(filename)
     assert p.exists
     return p
-
-
 
 
 # RDF namespaces we might query for later
@@ -68,9 +71,17 @@ class ResearchObject:
     def _find_arcp(self):
         ext_id = self.bag.info.get("External-Identifier")
         if ext_id and arcp.is_arcp_uri(ext_id):
+            _logger.debug("External-Identifier defines bagit root: %s", ext_id)
             return ext_id
-        else:
-            return arcp.arcp_random() 
+        else:            
+            u = arcp.arcp_random()
+            if ext_id:
+                _logger.warning("External-Identifier not an arcp URI", ext_id)
+            else: 
+                _logger.warning("External-Identifier not found in bag-info.txt")
+
+            _logger.info("Temporary bagit root: %s", u)
+            return u
     
     @property 
     def id(self):
@@ -90,10 +101,10 @@ class ResearchObject:
         if len(ros) == 1:
             return ros.pop()
         elif ros:
-            print("Warning: More than 1 Research Object in manifest", file=sys.stderr)
+            _logger.error("Warning: More than 1 Research Object in manifest")
             # We can't just return the first one as order is not guaranteed
 
-        # Use arcp://.../ root as fallback
+        _logger.info("Using root as fallback RO identifier: %s", self.root_uri)
         return URIRef(self.root_uri)
     
     def resolve_uri(self, relative_uri):
@@ -111,7 +122,7 @@ class ResearchObject:
         assert not path.is_absolute()
 
         if not str(path) in self.bag.entries:
-            raise IOError("Not found in bag manifest/tagmanifest: %s" % uri_path)
+            raise IOError("Not found in bag manifest/tagmanifest: %s", uri_path)
         # resolve as OS-specific path
         absolute = pathlib.Path(self.root_path, path)
         # ensure it did not climb out (will throw ValueError if not)
@@ -130,6 +141,7 @@ class ResearchObject:
             jsonld = f.read()
             # replace with file:/// URI
             jsonld = jsonld.replace("https://w3id.org/bundle/context", context)
+        _logger.info("Parsing RO manifest %s", manifest_file)
         g.parse(data=jsonld, format="json-ld", publicID=base_arcp)
         self.manifest = g
         return g
@@ -197,7 +209,9 @@ class ResearchObject:
 
     @property
     def workflow_id(self):
-        return self.describes(uri=self.id)
+        wf_id = self.describes(uri=self.id)
+        _logger.debug("Primary Workflow run: %s", wf_id)
+        return wf_id
 
 class Annotation:
     def __init__(self, graph, uri):
