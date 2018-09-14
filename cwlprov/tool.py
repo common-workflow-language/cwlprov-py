@@ -251,20 +251,15 @@ def validate_ro(ro, full_validation=False, args=None):
     return Status.OK
 
 
-def _as_uuid(w, args):
+def _as_uuid(w):
     try:
         uuid = UUID(w.replace("urn:uuid:", ""))
         return (uuid.urn, uuid, str(uuid))
     except ValueError:
-        if not args.quiet:
-            logger.warn("Invalid UUID %s", w)
+        logger.warn("Invalid UUID %s", w)
         # return -as-is
         return w, None, str(w)
 
-def _wf_id(ro, args, run=None):
-    w = run or args.id or ro.workflow_id
-    # ensure consistent UUID URIs
-    return _as_uuid(w, args)
 
 def _prov_with_attr(prov_doc, prov_type, attrib_value, with_attrib=PROV_ATTR_ACTIVITY):
     for elem in prov_doc.get_records(prov_type):
@@ -459,6 +454,11 @@ class Tool:
         else:
             return Path(p).absolute()        
 
+    def _wf_id(self, run=None):
+        w = run or self.args.id or self.ro.workflow_id
+        # ensure consistent UUID URIs
+        return _as_uuid(w)
+
     def info(self):
         ro = self.ro
         args = self.args
@@ -491,11 +491,13 @@ class Tool:
             print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
 
+
+
     def prov(self):
         ro = self.ro
         args = self.args
 
-        uri,uuid,name = _wf_id(ro, args)
+        uri,uuid,name = self._wf_id()
 
         if args.format == "files":
             for prov in ro.provenance(uri) or ():
@@ -519,8 +521,8 @@ class Tool:
     def inputs(self):
         ro = self.ro
         args = self.args
-        wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
-        a_uri,a_uuid,a_name = _wf_id(ro, args)
+        wf_uri,wf_uuid,wf_name = self._wf_id(args.run)
+        a_uri,a_uuid,a_name = self._wf_id()
         if not ro.provenance(wf_uri):
             _logger.error("No provenance found for: %s", wf_name)
             if args.run:
@@ -528,7 +530,7 @@ class Tool:
                 return Status.UNKNOWN_RUN
             else:
                 _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
-                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
+                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
                 if not ro.provenance(wf_uri):
                     _logger.error("No provenance found for: %s", wf_name)
                     return Status.UNKNOWN_RUN
@@ -607,8 +609,8 @@ class Tool:
     def outputs(self):
         ro = self.ro
         args = self.args
-        wf_uri,wf_uuid,wf_name = _wf_id(ro, args, args.run)
-        a_uri,a_uuid,a_name = _wf_id(ro, args)
+        wf_uri,wf_uuid,wf_name = self._wf_id(args.run)
+        a_uri,a_uuid,a_name = self._wf_id()
         if not ro.provenance(wf_uri):
             if args.run:
                 _logger.error("No provenance found for: %s in", wf_name)
@@ -617,7 +619,7 @@ class Tool:
             else:
                 _logger.debug("No provenance found for: %s in", wf_name)
                 _logger.info("Assuming primary run --run %s", ro.workflow_id)
-                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id, args)
+                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
                 if not ro.provenance(wf_uri):
                     _logger.error("No provenance found for: %s", wf_name)
                     return Status.UNKNOWN_RUN
@@ -718,7 +720,7 @@ class Tool:
     def run(self):
         ro = self.ro
         args = self.args
-        uri,uuid,name = _wf_id(ro, args)
+        uri,uuid,name = self._wf_id()
         if not ro.provenance(uri):
             _logger.error("No provenance found for: %s", name)
             #if args.hints:
