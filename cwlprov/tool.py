@@ -281,6 +281,18 @@ class Tool:
             self.output = open(self.args.output, mode="w", encoding="UTF-8")
         else:
             self.output = None # sys.stdout
+    
+    def close(self):
+        if self.output:
+            # Close --output file
+            self.output.close()
+            self.output = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def main(self):
         # type: (...) -> None
@@ -558,8 +570,6 @@ class Tool:
                 _logger.warning("No provenance for used entity %s", entity_id)
                 continue
 
-            if args.verbose:
-                self.print(entity)
             file_candidates = [entity]
             file_candidates.extend(entity.specializationOf())
             
@@ -567,12 +577,11 @@ class Tool:
                 bundled = ro.bundledAs(uri=file_candidate.uri)
                 if not bundled:
                     continue
-                if args.verbose:
-                    self.print(bundled)
+                _logger.debug("entity %s bundledAs %s", file_candidate.uri, bundled)
                 bundled_path = self._resource_path(bundled)
                 job[role_name] = {}
                 job[role_name]["class"] = "File"
-                job[role_name]["path"] = str(bundled_path)
+                job[role_name]["path"] = str(bundled_path)                
                 self.print(bundled_path)
                 break
 
@@ -857,5 +866,5 @@ class Tool:
         return Status.OK        
 
 def main(args=None):
-    tool = Tool(args)
-    return tool.main()
+    with Tool(args) as tool:
+        return tool.main()
