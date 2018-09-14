@@ -130,8 +130,8 @@ def parse_args(args=None):
         help="Show parameter names")
     parser_input.add_argument("--no-parameters", default=True, action='store_false',
         dest="parameters", help="Do not show parameter names")
-    parser_input.add_argument("--format", default="files", 
-        choices=["files", "json", "values"],
+    parser_input.add_argument("--format", default=None, 
+        choices=["files", "values", "uris", "json"],
         help="Output format, (default: files)")
 
     parser_output = subparsers.add_parser('outputs', help='list workflow/step output files/values')
@@ -384,13 +384,13 @@ class Tool:
         
         return cmd()
 
-    def _resource_path(self, path):
+    def _resource_path(self, path, absolute=False):
         p = self.ro.resolve_path(str(path))
         return self._absolute_or_relative_path(p)
 
-    def _absolute_or_relative_path(self, path):
+    def _absolute_or_relative_path(self, path, absolute=False):
         p = Path(path)
-        if self.relative_paths:
+        if not absolute and self.relative_paths:
             cwd = Path(self.relative_paths)
             return os.path.relpath(p, cwd)
         else:
@@ -510,9 +510,9 @@ class Tool:
     def inputs(self):
         ro = self.ro
         args = self.args
-        wf_uri,wf_uuid,wf_name = self._wf_id(args.run)
+        wf_uri,wf_uuid,wf_name = self._wf_id(self.args.run)
         a_uri,a_uuid,a_name = self._wf_id()
-        if not ro.provenance(wf_uri):            
+        if not self.ro.provenance(wf_uri):            
             if args.run:
                 _logger.error("No provenance found for: %s", wf_name)
                 # We'll need to give up
@@ -526,7 +526,7 @@ class Tool:
                     return Status.UNKNOWN_RUN
 
         try:
-            provenance = Provenance(ro, wf_uri)
+            provenance = Provenance(self.ro, wf_uri)
         except OSError:
             # assume Error already printed by _prov_document
             return Status.UNKNOWN_RUN
@@ -534,7 +534,7 @@ class Tool:
         activity = provenance.activity(a_uri)
         if not activity:
             _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
-            if not args.run and self.hints:
+            if not self.args.run and self.hints:
                 print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
             return Status.UNKNOWN_RUN
         activity_id = activity.id
@@ -573,25 +573,34 @@ class Tool:
 
             file_candidates = [entity]
             file_candidates.extend(entity.specializationOf())
-            
+            if self.args.format == "uris":
+                self.print(file_candidates[-1].uri)
+
             for file_candidate in file_candidates:
-                bundled = ro.bundledAs(uri=file_candidate.uri)
+                bundled = self.ro.bundledAs(uri=file_candidate.uri)
                 if not bundled:
                     continue
                 _logger.debug("entity %s bundledAs %s", file_candidate.uri, bundled)
                 bundled_path = self._resource_path(bundled)
                 job[role_name] = {}
                 job[role_name]["class"] = "File"
-                job[role_name]["path"] = str(bundled_path)                
-                self.print(bundled_path)
+                job[role_name]["path"] = str(bundled_path)
+                if not self.args.format or self.args.format == "files":
+                    self.print(bundled_path)
+                if self.args.format=="values":
+                    with open(self._resource_path(bundled, absolute=False)) as f:
+                        shutil.copyfileobj(f, self.output or sys.stdout)
                 break
 
             # Perhaps it has prov:value ? 
             value = entity.value
             if value is not None: # but might be False
                 job[role_name] = value
-                self.print(value)
-        self.print(json.dumps(job))
+                if not self.args.format or self.args.format == "values":
+                    self.print(value)
+
+        if self.args.format == "json":
+            self.print(json.dumps(job))
 
     def outputs(self):
         ro = self.ro
