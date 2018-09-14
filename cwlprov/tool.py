@@ -203,53 +203,6 @@ def _info_set(bag, key):
     else:
         return set([v])
 
-def validate_bag(bag, full_validation=False):
-    valid_bag = bag.validate(fast=not full_validation)
-    if not valid_bag:
-        _logger.error("Invalid BagIt folder: %s", bag.path)
-        # Specific errors already output from bagit library
-        return Status.INVALID_BAG
-    # Check we follow right profile
-    profiles = _info_set(bag, "BagIt-Profile-Identifier")
-    supported_ro = set(BAGIT_RO_PROFILES).intersection(profiles)
-    if not supported_ro:
-        _logger.warning("Missing BdBag profile: %s", bag.path)
-        if args.hints and not args.quiet:
-            print("Try adding to %s/bag-info.txt:" % bag.path)
-            print("BagIt-Profile-Identifier: %s" % BAGIT_RO_PROFILES[0])
-        if full_validation:
-            return Status.MISSING_PROFILE
-    # Check we have a manifest
-    has_manifest = MANIFEST_JSON in bag.tagfile_entries()
-    if not has_manifest:
-        _logger.warning("Missing from tagmanifest: %s", MANIFEST_JSON)
-        return Status.MISSING_MANIFEST
-    return Status.OK
-
-def validate_ro(ro, full_validation=False, args=None):
-    # If it has this prefix, it's probably OK
-    cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
-    if not cwlprov:
-        if full_validation or not args.quiet: 
-            _logger.warning("Missing CWLProv profile: %s", ro.bag.path)
-        if full_validation and args.hints and not args.quiet:
-            print("Try adding to %s/metadata/manifest.json:" % ro.bag.path)
-            print('{\n  "id": "/",\n  "conformsTo", "%s",\n  ...\n}' %
-                CWLPROV_SUPPORTED[0])
-            return Status.MISSING_PROFILE
-    supported_cwlprov = set(CWLPROV_SUPPORTED).intersection(cwlprov)
-    if cwlprov and not supported_cwlprov:
-        # Probably a newer one this code don't support yet; it will 
-        # probably be fine
-        _logger.warning("Unsupported CWLProv version: %s", cwlprov)
-        if args.hints:
-            print("Supported profiles:\n %s" %
-                    "\n ".join(CWLPROV_SUPPORTED)
-                 )
-        if full_validation:
-            return Status.UNSUPPORTED_CWLPROV_VERSION
-    return Status.OK
-
 
 def _simpler_uuid(uri):
     return str(uri).replace("urn:uuid:", "")
@@ -368,15 +321,14 @@ class Tool:
         args = self.args
                 
         if args.relative is not None:
-            self.relative_paths = args.relative
+            self.relative_paths = args.relative and Path()
         else:
             if args.directory and Path(args.directory).is_absolute():
                 # absolute if -d is absolute
                 self.relative_paths = False
             else:
-                # default: relative if -d is relative
-                self.relative_paths = True
-                # FIXME: What if -d ../../ ? 
+                # default: relative to "." if -d is relative
+                self.relative_paths = Path()                
         
         if args.quiet and args.verbose:
             _logger.error("Incompatible parameters: --quiet --verbose")
@@ -416,18 +368,18 @@ class Tool:
             return Status.IO_ERROR
         # Unhandled errors will show Python stacktrace
 
-        invalid = validate_bag(bag, full_validation)
+        invalid = self.validate_bag(bag, full_validation)
         if invalid:
             return invalid
         
         self.ro = ResearchObject(bag)
-        invalid = validate_ro(self.ro, full_validation, args)
+        invalid = self.validate_ro(full_validation)
         if invalid:
             return invalid
 
         if full_validation:
             if not args.quiet:
-                print("Valid CWLProv RO: %s" % folder)
+                print("Valid CWLProv RO: %s" % self._absolute_or_relative_path(folder))
             return Status.OK
 
         # Else, find the other commands
@@ -450,17 +402,71 @@ class Tool:
         
         return cmd()
 
-    def _path(self, path):
+    def _resource_path(self, path):
         p = self.ro.resolve_path(str(path))
+        return self._absolute_or_relative_path(p)
+
+    def _absolute_or_relative_path(self, path):
+        p = Path(path)
         if self.relative_paths:
-            return os.path.relpath(Path(p), Path())        
+            cwd = Path(self.relative_paths)
+            return os.path.relpath(p, cwd)
         else:
-            return Path(p).absolute()        
+            return Path(p).absolute()
 
     def _wf_id(self, run=None):
         w = run or self.args.id or self.ro.workflow_id
         # ensure consistent UUID URIs
         return _as_uuid(w)
+
+    def validate_bag(self, bag, full_validation=False):
+        valid_bag = bag.validate(fast=not full_validation)
+        if not valid_bag:
+            _logger.error("Invalid BagIt folder: %s", bag.path)
+            # Specific errors already output from bagit library
+            return Status.INVALID_BAG
+        # Check we follow right profile
+        profiles = _info_set(bag, "BagIt-Profile-Identifier")
+        supported_ro = set(BAGIT_RO_PROFILES).intersection(profiles)
+        if not supported_ro:
+            _logger.warning("Missing BdBag profile: %s", bag.path)
+            if args.hints and not args.quiet:
+                print("Try adding to %s/bag-info.txt:" % bag.path)
+                print("BagIt-Profile-Identifier: %s" % BAGIT_RO_PROFILES[0])
+            if full_validation:
+                return Status.MISSING_PROFILE
+        # Check we have a manifest
+        has_manifest = MANIFEST_JSON in bag.tagfile_entries()
+        if not has_manifest:
+            _logger.warning("Missing from tagmanifest: %s", MANIFEST_JSON)
+            return Status.MISSING_MANIFEST
+        return Status.OK
+
+    def validate_ro(self, full_validation=False):
+        ro = self.ro
+        args = self.args
+        # If it has this prefix, it's probably OK
+        cwlprov = set(p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/"))
+        if not cwlprov:
+            if full_validation or not args.quiet: 
+                _logger.warning("Missing CWLProv profile: %s", ro.bag.path)
+            if full_validation and args.hints and not args.quiet:
+                print("Try adding to %s/metadata/manifest.json:" % ro.bag.path)
+                print('{\n  "id": "/",\n  "conformsTo", "%s",\n  ...\n}' %
+                    CWLPROV_SUPPORTED[0])
+                return Status.MISSING_PROFILE
+        supported_cwlprov = set(CWLPROV_SUPPORTED).intersection(cwlprov)
+        if cwlprov and not supported_cwlprov:
+            # Probably a newer one this code don't support yet; it will 
+            # probably be fine
+            _logger.warning("Unsupported CWLProv version: %s", cwlprov)
+            if args.hints:
+                print("Supported profiles:\n %s" %
+                        "\n ".join(CWLPROV_SUPPORTED)
+                    )
+            if full_validation:
+                return Status.UNSUPPORTED_CWLPROV_VERSION
+        return Status.OK
 
     def info(self):
         ro = self.ro
@@ -507,9 +513,9 @@ class Tool:
                 if args.formats:
                     format = ro.mediatype(prov) or ""
                     format = EXTENSIONS.get(format, format)
-                    print("%s %s" % (format, (self._path(prov))))
+                    print("%s %s" % (format, (self._resource_path(prov))))
                 else:
-                    print("%s" % self._path(prov))
+                    print("%s" % self._resource_path(prov))
         else:
             media_type = MEDIA_TYPES.get(args.format, args.format)
             prov = _prov_format(ro, uri, media_type)
@@ -595,7 +601,7 @@ class Tool:
                     continue
                 if args.verbose:
                     print(bundled)
-                bundled_path = self._path(bundled)
+                bundled_path = self._resource_path(bundled)
                 job[role_name] = {}
                 job[role_name]["class"] = "File"
                 job[role_name]["path"] = str(bundled_path)
@@ -682,7 +688,7 @@ class Tool:
                     continue
                 if args.verbose:
                     print(bundled)
-                bundled_path = self._path(bundled)
+                bundled_path = self._resource_path(bundled)
                 print(bundled_path)
                 break
 
