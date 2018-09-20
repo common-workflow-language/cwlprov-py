@@ -563,7 +563,7 @@ class Tool:
             role_name = role_name.split("/")[-1]
             role_name = urllib.parse.unquote(role_name)
             
-            if args.parameters and not args.quiet:            
+            if args.parameters and not args.quiet and args.format != "json":
                 self.print("Input %s:" % role_name) 
             time = u.time
             entity = u.entity()
