@@ -446,7 +446,7 @@ class Tool:
         if not cmd:
             # Light-weight validation
             if not args.quiet:
-                self.print("Detected CWLProv research Object: %s" % self.folder)
+                self.print("Detected CWLProv Research Object: %s" % self.folder)
             else:
                 self.print(self.folder)
             return Status.OK
@@ -684,6 +684,12 @@ class Tool:
                 job[role_name] = value
                 if not self.args.format or self.args.format == "values":
                     self.print(value)
+                elif self.args.format == "files":
+                    # We'll have to make a new file!
+                    with tempfile.NamedTemporaryFile(delete=False) as f:
+                        b = str(value).encode("utf-8")
+                        f.write(b)                        
+                        self.print(f.name)
 
         if self.args.format == "json":
             self.print(json.dumps(job))
