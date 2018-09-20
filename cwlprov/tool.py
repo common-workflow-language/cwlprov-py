@@ -189,7 +189,7 @@ def parse_args(args=None):
 
     return parser.parse_args(args)
 
-def _determine_bagit_folder(folder=None):
+def _find_bagit_folder(folder=None):
     # Absolute so we won't climb to ../../../../../ forever
     # and have resolved any symlinks
     folder = pathlib.Path(folder or "").absolute()
@@ -300,51 +300,112 @@ class Tool:
     def __exit__(self, type, value, traceback):
         self.close()
 
-    def main(self):
-        # type: (...) -> None
-        """cwlprov command line tool"""
-        args = self.args
+    def _determine_relative(self):
+        args = self.args        
 
-        if args.relative is not None:
-            self.relative_paths = args.relative and Path()
+        if args.relative is False:
+            _logger.debug("Output paths absolute")
+            self.relative_paths = None
+            return
+
+        _logger.debug("Determining output paths")
+
+        if not self.output: # stdout
+            _logger.debug("Output paths relative to current directory?")
+            relative_to = Path()
         else:
-            if args.directory and Path(args.directory).is_absolute():
-                # absolute if -d is absolute
-                self.relative_paths = False
-            else:
-                # default: relative to "." if -d is relative
-                self.relative_paths = Path()
+            _logger.debug("Output paths relative to (resolved parent) path of %s?", args.output)
+            relative_to = Path(args.output).resolve().parent
+
+        if args.relative:
+            # We'll respect the parameter
+            # Either calculate --relative ; or None for --absolute
+            _logger.debug("Output paths relative to (resolved parent) path of %s", args.output)
+            self.relative_paths = args.relative and relative_to or None
+            return
         
-        if args.quiet and args.verbose:
+        assert(args.relative is None) # only remaining option
+        _logger.debug("Neither --relative nor --absolute given")
+
+        if self.output:
+            _logger.debug("--output %s, paths relative to that?", self.output)
+
+            # Only relative if we can avoid ../ (use --relative to force)
+            # assuming _determine_folder has already parsed args.directory
+            try:
+                # Check if bag folder is reachable from output folder                    
+                f = self.folder.resolve() # Compare as resolved - following symlinks etc
+                rel = f.relative_to(relative_to)
+                self.relative_paths = relative_to
+                _logger.debug("Relative as bag %s is within output folder %s", f, relative_to)
+            except ValueError:
+                # Would need ../ - bail out to absolute paths
+                self.relative_paths = None
+                _logger.debug("Absolute as bag %s not within output folder %s", self.folder, relative_to)
+
+        elif args.directory and Path(args.directory).is_absolute():
+            _logger.debug("output paths absolute, as --directory %s is absolute", args.directory)
+            self.relative_paths = None
+        else:
+            _logger.debug("output paths relative to %s as --directory %s is relative", relative_to, args.directory)
+            self.relative_paths = relative_to
+
+    def _determine_logging(self):
+        if self.args.quiet and self.args.verbose:
             _logger.error("Incompatible parameters: --quiet --verbose")
             return Status.UNKNOWN_COMMAND
-        _set_log_level(args.quiet, args.verbose)
+        _set_log_level(self.args.quiet, self.args.verbose)
 
-        # Don't output hints for --quiet or --output
-        self.hints = args.hints and not args.quiet and not self.output
-
-        folder = args.directory or _determine_bagit_folder()
+    def _determine_folder(self):        
+        folder = self.args.directory or _find_bagit_folder()
         if not folder:        
             _logger.error("Could not find bagit.txt, try cwlprov -d mybag/")
             return Status.BAG_NOT_FOUND
-        folder = pathlib.Path(folder)
-        if not folder.exists():
-            _logger.error("No such file or directory: %s",  folder)
+        self.folder = pathlib.Path(folder)
+        if not self.folder.exists():
+            _logger.error("No such file or directory: %s",  self.folder)
             return Status.BAG_NOT_FOUND
-        if not folder.is_dir():
+        if not self.folder.is_dir():
             _logger.error("Not a directory: %s", folder)
             return Status.NOT_A_DIRECTORY
-        bagit_file = folder / "bagit.txt"
+        bagit_file = self.folder / "bagit.txt"
         if not bagit_file.is_file():
             _logger.error("File not found: %s", bagit_file)
             return Status.BAG_NOT_FOUND
 
+    def _determine_hints(self):
+        # Don't output hints for --quiet or --output
+        self.hints = self.args.hints and not self.args.quiet and not self.output
+
+    def main(self):
+        # type: (...) -> None
+        """cwlprov command line tool"""
+        args = self.args
+        
+        status = self._determine_logging()
+        if status:
+            return status
+        # Now that logging is determined we can report on args.output
+        if self.output:
+            _logger.debug("Output to %s", args.output)
+        
+        status = self._determine_hints()
+        if status:
+            return status
+    
+        status = self._determine_folder()
+        if status:
+            return status
+
+        status = self._determine_relative()
+        if status:
+            return status
 
         full_validation = args.cmd == "validate"
-        _logger.info("Opening BagIt %s", folder)
+        _logger.info("Opening BagIt %s", self.folder)
         ## BagIt check
         try:
-            bag = BDBag(str(folder))
+            bag = BDBag(str(self.folder))
         except BagError as e:
             _logger.fatal(e)
             return Status.INVALID_BAG
@@ -367,7 +428,7 @@ class Tool:
 
         if full_validation:
             if not args.quiet:
-                self.print("Valid CWLProv RO: %s" % self._absolute_or_relative_path(folder))
+                self.print("Valid CWLProv RO: %s" % self._absolute_or_relative_path(self.folder))
             return Status.OK
 
         # Else, find the other commands
@@ -385,7 +446,9 @@ class Tool:
         if not cmd:
             # Light-weight validation
             if not args.quiet:
-                self.print("Detected CWLProv research Object: %s" % folder)
+                self.print("Detected CWLProv research Object: %s" % self.folder)
+            else:
+                self.print(self.folder)
             return Status.OK
         
         return cmd()
@@ -823,3 +886,4 @@ class Tool:
 def main(args=None):
     with Tool(args) as tool:
         return tool.main()
+
