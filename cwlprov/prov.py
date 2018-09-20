@@ -143,6 +143,10 @@ class Activity(_Prov):
     def usage(self, role=None):
         usage = self.provenance.record_with_attr(ProvUsage, self.id, PROV_ATTR_ACTIVITY)
         return (Usage(self.provenance, u) for u in usage)
+    def generation(self, role=None):
+        generation = self.provenance.record_with_attr(ProvGeneration, self.id, PROV_ATTR_ACTIVITY)
+        return (Generation(self.provenance, g) for g in generation)
+
 
 class Specialization(_Prov):
     
@@ -160,7 +164,7 @@ class Specialization(_Prov):
 
     def specific_entity(self):
         s = self.specific_entity_id
-        return s and self.provenance.entity(g)
+        return s and self.provenance.entity(s)
 
 class Entity(_Prov):
 
@@ -178,7 +182,7 @@ class Entity(_Prov):
     def value(self):
         return self._prov_attr(PROV_VALUE)
 
-class Usage(_Prov):
+class _Usage_Or_Generation(_Prov):
 
     @property
     def entity_id(self):
@@ -194,7 +198,11 @@ class Usage(_Prov):
 
     def time(self):
         return self._prov_attr(PROV_ATTR_TIME)
-
-
-
     
+class Generation(_Usage_Or_Generation):
+    pass
+
+class Usage(_Usage_Or_Generation):
+    pass
+
+

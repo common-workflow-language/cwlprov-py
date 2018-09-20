@@ -88,11 +88,12 @@ class Status(IntEnum):
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov explores Research Objects containing provenance of Common Workflow Language executions. <https://w3id.org/cwl/prov/>')
+    
+    # Common options
     parser.add_argument("--directory", "-d", 
         help="Path to CWLProv Research Object (default: .)",
         default=None
         )
-
     parser.add_argument("--relative", default=None, action='store_true',
         help="Output paths relative to current directory (default if -d is missing or relative)")
     parser.add_argument("--absolute", default=None, action='store_false',
@@ -115,6 +116,7 @@ def parse_args(args=None):
     parser_validate = subparsers.add_parser('validate', help='validate the CWLProv Research Object')
     parser_info = subparsers.add_parser('info', help='show research object metadata')
     parser_who = subparsers.add_parser('who', help='show who ran the workflow')    
+    
     parser_prov = subparsers.add_parser('prov', help='export workflow execution provenance in PROV format')
     parser_prov.add_argument("id", default=None, nargs="?", help="workflow run UUID")
     parser_prov.add_argument("--format", "-f", default="files", 
@@ -123,28 +125,32 @@ def parse_args(args=None):
     parser_prov.add_argument("--formats", "-F", default=False, 
         action='store_true', help="List available PROV formats")
 
-    parser_input = subparsers.add_parser('inputs', help='list workflow/step input files/values')
-    parser_input.add_argument("--run", default=None, help="workflow run UUID")
-    parser_input.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
-    parser_input.add_argument("--parameters",  default=True, action='store_true',
+    # Common options for parser_input and parser_output
+    run_option = argparse.ArgumentParser(add_help=False)
+    run_option.add_argument("--run", default=None, help="workflow run UUID")
+    run_option.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+
+    io_outputs = argparse.ArgumentParser(add_help=False)
+    io_outputs.add_argument("--parameters",  default=True, action='store_true',
         help="Show parameter names")
-    parser_input.add_argument("--no-parameters", default=True, action='store_false',
+    io_outputs.add_argument("--no-parameters", default=True, action='store_false',
         dest="parameters", help="Do not show parameter names")
-    parser_input.add_argument("--format", default=None, 
+    io_outputs.add_argument("--format", default=None, 
         choices=["files", "values", "uris", "json"],
         help="Output format, (default: files)")
+        # Tip: These formats are NOT the same as in parser_prov
 
-    parser_output = subparsers.add_parser('outputs', help='list workflow/step output files/values')
-    parser_output.add_argument("--run", default=None, help="workflow run UUID")
-    parser_output.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
-    parser_output.add_argument("--parameters",  default=True, action='store_true',
-        help="Show parameter names")
-    parser_output.add_argument("--no-parameters", default=True, action='store_false',
-        dest="parameters", help="Do not show parameter names")
+    parser_input = subparsers.add_parser('inputs', 
+        help='list workflow/step input files/values', 
+        parents=[run_option, io_outputs])
 
+    parser_output = subparsers.add_parser('outputs', 
+        help='list workflow/step output files/values', 
+        parents=[run_option, io_outputs])
 
     parser_run = subparsers.add_parser('run', help='show workflow execution log')
     parser_run.add_argument("id", default=None, nargs="?", help="workflow run UUID")
+
     parser_run.add_argument("--step", "-s", default=None, 
         help="Show only step with given UUID")
     parser_run.add_argument("--steps",  default=True, action='store_true',
@@ -508,6 +514,17 @@ class Tool:
         return Status.OK
 
     def inputs(self):
+        return self._inputs_or_outputs(is_inputs=True)
+    
+    def outputs(self):
+        return self._inputs_or_outputs(is_inputs=False)
+
+    def _inputs_or_outputs(self, is_inputs):
+        if is_inputs:
+            put_s = "Input"
+        else:
+            put_s = "Output"
+
         ro = self.ro
         args = self.args
         wf_uri,wf_uuid,wf_name = self._wf_id(self.args.run)
@@ -539,22 +556,27 @@ class Tool:
             return Status.UNKNOWN_RUN
         activity_id = activity.id
 
+
+
         if wf_uri != a_uri:
-            _logger.info("Inputs for step %s in workflow %s", a_name, wf_name)
+            _logger.info("%ss for step %s in workflow %s", put_s, a_name, wf_name)
         else:
-            _logger.info("Inputs for workflow %s", wf_name)
+            _logger.info("%ss for workflow %s", put_s, wf_name)
 
         job = {}
         
-        usage = activity.usage()
-        for u in usage:
+        if is_inputs:
+            records = activity.usage()
+        else:
+            records = activity.generation()
 
+        for u in records:
             entity_id = u.entity_id
             role = u.role
 
             # Naively assume CWL identifier structure of URI
             if not role:
-                _logger.warning("Unknown role for usage %s, skipping input", u)
+                _logger.warning("Unknown role for %s, skipping", u)
                 role_name = None
                 continue
             
@@ -564,7 +586,7 @@ class Tool:
             role_name = urllib.parse.unquote(role_name)
             
             if args.parameters and not args.quiet and args.format != "json":
-                self.print("Input %s:" % role_name) 
+                self.print("%s %s:", put_s, role_name)
             time = u.time
             entity = u.entity()
             if not entity:
@@ -588,11 +610,12 @@ class Tool:
                 if not self.args.format or self.args.format == "files":
                     self.print(bundled_path)
                 if self.args.format=="values":
+                    # Warning: This will print all of the file straight to stdout
                     with open(self._resource_path(bundled, absolute=False)) as f:
                         shutil.copyfileobj(f, self.output or sys.stdout)
                 break
 
-            # Perhaps it has prov:value ? 
+            # Still here? Perhaps it has prov:value ?
             value = entity.value
             if value is not None: # but might be False
                 job[role_name] = value
@@ -601,88 +624,6 @@ class Tool:
 
         if self.args.format == "json":
             self.print(json.dumps(job))
-
-    def outputs(self):
-        ro = self.ro
-        args = self.args
-        wf_uri,wf_uuid,wf_name = self._wf_id(args.run)
-        a_uri,a_uuid,a_name = self._wf_id()
-        if not ro.provenance(wf_uri):
-            if args.run:
-                _logger.error("No provenance found for: %s in", wf_name)
-                # We'll need to give up
-                return Status.UNKNOWN_RUN
-            else:
-                _logger.debug("No provenance found for: %s in", wf_name)
-                _logger.info("Assuming primary run --run %s", ro.workflow_id)
-                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
-                if not ro.provenance(wf_uri):
-                    _logger.error("No provenance found for: %s", wf_name)
-                    return Status.UNKNOWN_RUN
-
-        prov_doc = _prov_document(ro, wf_uri, args)
-        if not prov_doc:
-            # Error already printed by _prov_document
-            return Status.UNKNOWN_RUN
-
-        activity_id = Identifier(a_uri)
-        activity = first(prov_doc.get_record(activity_id))
-        if not activity:
-            _logger.error("Provenance %s does not describe step %s", wf_name, a_uri)
-            if not args.run and self.hints:
-                print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
-            return Status.UNKNOWN_RUN
-        if args.verbose:
-            if wf_uri != a_uri:
-                _logger.info("Outputs for step %s in workflow %s", (a_name, wf_name))
-            else:
-                _logger.info("Outputs for workflow %s", (wf_name))
-
-        gen = _prov_with_attr(prov_doc, ProvGeneration, activity_id, PROV_ATTR_ACTIVITY)
-        for g in gen:
-            if args.verbose:
-                self.print(g)
-            entity_id = _prov_attr(PROV_ATTR_ENTITY, g)
-            role = _prov_attr(PROV_ROLE, g)
-            if args.parameters and not args.quiet:
-                if isinstance(role, QualifiedName):
-                    role_name = role.localpart
-                else:
-                    role_name = str(role)
-                self.print("Output %s:" % role_name) 
-            time = _prov_attr(PROV_ATTR_TIME, g)
-            entity = first(prov_doc.get_record(entity_id))
-            if not entity:
-                _logger.warning("No provenance for generated entity %s", entity_id)
-                continue
-
-            file_candidates = [entity]
-            general_id = None
-            specializations = set(_prov_with_attr(prov_doc, ProvSpecialization, entity_id, PROV_ATTR_SPECIFIC_ENTITY))
-            if specializations:
-                specialization = first(specializations)
-                if args.verbose:
-                    self.print(specialization)
-                general_id = _prov_attr(PROV_ATTR_GENERAL_ENTITY, specialization)
-                generalEntity = general_id and first(prov_doc.get_record(general_id))
-                if args.verbose and generalEntity:
-                    self.print(generalEntity)
-                file_candidates.append(generalEntity)
-            
-            for file_candidate in file_candidates:
-                bundled = ro.bundledAs(uri=file_candidate.identifier.uri)
-                if not bundled:
-                    continue
-                if args.verbose:
-                    self.print(bundled)
-                bundled_path = self._resource_path(bundled)
-                self.print(bundled_path)
-                break
-
-            # Perhaps it has prov:value ? 
-            value = _prov_attr(PROV_VALUE, entity)
-            if not value is None: # might be False
-                self.print(value)        
 
     def runs(self):
         ro = self.ro
@@ -752,8 +693,12 @@ class Tool:
                 time_part = ""        
             self.print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
 
-    def print(self, *args):
-        print(*args, file=self.output or sys.stdout)
+    def print(self, msg, *args):
+        if args and isinstance(msg, str) and "%" in msg:
+            msg = msg % args
+            print(msg, file=self.output or sys.stdout)
+        else:
+            print(msg, *args, file=self.output or sys.stdout)
 
     def run(self):
         ro = self.ro
