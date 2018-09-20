@@ -320,7 +320,7 @@ class Tool:
         if args.relative:
             # We'll respect the parameter
             # Either calculate --relative ; or None for --absolute
-            _logger.debug("Output paths relative to (resolved parent) path of %s", args.output)
+            _logger.debug("Output paths relative to %s", relative_to)
             self.relative_paths = args.relative and relative_to or None
             return
         
@@ -328,7 +328,7 @@ class Tool:
         _logger.debug("Neither --relative nor --absolute given")
 
         if self.output:
-            _logger.debug("--output %s, paths relative to that?", self.output)
+            _logger.debug("Considering if paths should be relative to --output %s", args.output)
 
             # Only relative if we can avoid ../ (use --relative to force)
             # assuming _determine_folder has already parsed args.directory
@@ -344,10 +344,10 @@ class Tool:
                 _logger.debug("Absolute as bag %s not within output folder %s", self.folder, relative_to)
 
         elif args.directory and Path(args.directory).is_absolute():
-            _logger.debug("output paths absolute, as --directory %s is absolute", args.directory)
+            _logger.debug("Output paths absolute as --directory %s is absolute", args.directory)
             self.relative_paths = None
         else:
-            _logger.debug("output paths relative to %s as --directory %s is relative", relative_to, args.directory)
+            _logger.debug("Output paths relative to %s as --directory %s is relative", relative_to, args.directory)
             self.relative_paths = relative_to
 
     def _determine_logging(self):
