@@ -127,8 +127,8 @@ def parse_args(args=None):
 
     # Common options for parser_input and parser_output
     run_option = argparse.ArgumentParser(add_help=False)
-    run_option.add_argument("--run", default=None, help="workflow run UUID")
-    run_option.add_argument("id", default=None, nargs="?", help="step/workflow run UUID to show")
+    run_option.add_argument("--run", default=None, help="workflow run UUID that contains step")
+    run_option.add_argument("id", default=None, nargs="?", help="step/workflow run UUID")
 
     io_outputs = argparse.ArgumentParser(add_help=False)
     io_outputs.add_argument("--parameters",  default=True, action='store_true',
@@ -186,6 +186,10 @@ def parse_args(args=None):
         action='store_true', help="Show outputs")
 
     parser_runs = subparsers.add_parser('runs', help='list all workflow executions in RO')
+
+    parser_rerun = subparsers.add_parser('rerun', 
+        help='rerun a workflow or step', 
+        parents=[run_option])
 
     return parser.parse_args(args)
 
@@ -440,6 +444,7 @@ class Tool:
             "outputs": self.outputs,
             "run": self.run,
             "runs": self.runs,
+            "rerun": self.rerun,
         }
         
         cmd = COMMANDS.get(args.cmd)
@@ -582,6 +587,39 @@ class Tool:
     def outputs(self):
         return self._inputs_or_outputs(is_inputs=False)
 
+    def _activity_from_provenance(self):
+        ro = self.ro
+        args = self.args
+        wf_uri,wf_uuid,wf_name = self._wf_id(self.args.run)
+        a_uri,a_uuid,a_name = self._wf_id()
+        if not self.ro.provenance(wf_uri):            
+            if args.run:
+                _logger.error("No provenance found for: %s", wf_name)
+                # We'll need to give up
+                return Status.UNKNOWN_RUN
+            else:
+                _logger.debug("No provenance found for: %s", wf_name)
+                _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
+                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
+                if not ro.provenance(wf_uri):
+                    _logger.error("No provenance found for: %s", wf_name)
+                    return Status.UNKNOWN_RUN
+
+        try:
+            provenance = Provenance(self.ro, wf_uri)
+        except OSError:
+            # assume Error already printed by _prov_document
+            return Status.UNKNOWN_RUN
+        
+        activity = provenance.activity(a_uri)
+        if not activity:
+            _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
+            if not self.args.run and self.hints:
+                print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
+            return None
+        self.provenance = provenance
+        return activity
+
     def _inputs_or_outputs(self, is_inputs):
         if is_inputs:
             put_s = "Input"
@@ -721,6 +759,41 @@ class Tool:
         if self.hints:
             self.print("Legend:")
             self.print(" * master workflow")
+
+    def rerun(self):
+        a = self._activity_from_provenance()
+        if not a:
+            return Status.UNKNOWN_RUN
+        _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
+        wf = self._find_workflow()
+        if a.id.uri == str(self.ro.workflow_id):
+            _logger.debug("Master workflow, re-using level 0 primary job")
+            job = self._find_primary_job()
+        else:
+            _logger.debug("Recreating job from level 1 provenance")
+            job = self._recreate_job(a)
+        _logger.info("Running %s %s %s", "cwl-runner", wf, job)
+        os.execlp("cwl-runner", "cwl-runner", str(wf), str(job))
+        # Still here? Above should have taken over
+        _logger.error("Could not execute cwl-runner")
+        return Status.UNHANDLED_ERROR
+        
+    def _find_workflow(self):
+        #TODO find path in manifest
+        path = "workflow/packed.cwl"
+        p = self.ro.resolve_path(str(path))
+        return p
+
+    def _find_primary_job(self):
+        #TODO find path in manifest
+        path = "workflow/primary-job.json"
+        p = self.ro.resolve_path(str(path))
+        return p
+
+    def _recreate_job(self):
+        # TODO
+        pass
+
 
     def _usage(self, activity_id, prov_doc):
         args = self.args

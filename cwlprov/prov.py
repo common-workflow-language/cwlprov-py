@@ -122,6 +122,10 @@ class _Prov:
         return self.record.identifier
 
     @property
+    def label(self):
+        return self._prov_attr("prov:label")
+
+    @property
     def uri(self):
         i = self.id
         return i and i.uri
@@ -139,7 +143,7 @@ class _Prov:
         return self.record.get_attribute(attr)
 
 
-class Activity(_Prov):    
+class Activity(_Prov):
     def usage(self, role=None):
         usage = self.provenance.record_with_attr(ProvUsage, self.id, PROV_ATTR_ACTIVITY)
         return (Usage(self.provenance, u) for u in usage)
