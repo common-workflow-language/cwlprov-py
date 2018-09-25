@@ -55,6 +55,7 @@ BAGIT_RO_PROFILES = (
 )
 CWLPROV_SUPPORTED = (
     # Decreasing order as first item is output as example
+    "https://w3id.org/cwl/prov/0.6.0",
     "https://w3id.org/cwl/prov/0.5.0",
     "https://w3id.org/cwl/prov/0.4.0",
     "https://w3id.org/cwl/prov/0.3.0",
@@ -772,10 +773,18 @@ class Tool:
         else:
             _logger.debug("Recreating job from level 1 provenance")
             job = self._recreate_job(a)
+            # TODO: Extract and absolute 'run' from related step
+            # in packed.cwl
+            # wf = wf + #something
+            
+
         _logger.info("Running %s %s %s", "cwl-runner", wf, job)
+        # TODO: support --cwlrunner cwltoil ? 
         os.execlp("cwl-runner", "cwl-runner", str(wf), str(job))
-        # Still here? Above should have taken over
-        _logger.error("Could not execute cwl-runner")
+        # TODO: support other cwl-runner parameters?   before or after wf/job ? 
+    
+        # Still here? Above should have taken over this python process!
+        _logger.fatal("Could not execute cwl-runner")
         return Status.UNHANDLED_ERROR
         
     def _find_workflow(self):
