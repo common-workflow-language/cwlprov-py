@@ -844,7 +844,7 @@ class Tool:
                 time_part = ""        
             self.print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
 
-    def print(self, msg, *args):
+    def print(self, msg="", *args):
         if args and isinstance(msg, str) and "%" in msg:
             msg = msg % args
             print(msg, file=self.output or sys.stdout)
