@@ -803,11 +803,13 @@ class Tool:
         p = self.ro.resolve_path(str(path))
         return p
 
-    def _recreate_job(self):
-        # TODO
-        pass
-
-
+    def _recreate_job(self, activity):
+        job = {"activity": str(activity.id)}
+        with tempfile.NamedTemporaryFile(mode="w", prefix="job", suffix="json", delete=False, encoding="UTF-8") as f:
+            json.dump(job, f)
+            print(f.name)
+            return f.name
+ 
     def _usage(self, activity_id, prov_doc):
         args = self.args
         if not args.inputs:
