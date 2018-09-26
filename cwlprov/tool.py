@@ -136,9 +136,9 @@ def parse_args(args=None):
         help="Show parameter names")
     io_outputs.add_argument("--no-parameters", default=True, action='store_false',
         dest="parameters", help="Do not show parameter names")
-    io_outputs.add_argument("--format", default=None, 
-        choices=["files", "values", "uris", "json"],
-        help="Output format, (default: files)")
+    io_outputs.add_argument("--format", default="any",
+        choices=["any", "files", "values", "uris", "json"],
+        help="Output format, (default: any)")
         # Tip: These formats are NOT the same as in parser_prov
 
     parser_input = subparsers.add_parser('inputs', 
@@ -701,9 +701,11 @@ class Tool:
 
             file_candidates = [entity]
             file_candidates.extend(entity.specializationOf())
-            if self.args.format == "uris":
+            if self.args.format in ("uris", "any"):
                 self.print(file_candidates[-1].uri)
+                continue
 
+            printed_file = False
             for file_candidate in file_candidates:
                 bundled = self.ro.bundledAs(uri=file_candidate.uri)
                 if not bundled:
@@ -713,19 +715,23 @@ class Tool:
                 job[role_name] = {}
                 job[role_name]["class"] = "File"
                 job[role_name]["path"] = str(bundled_path)
-                if not self.args.format or self.args.format == "files":
+                if self.args.format in ("files", "any"):
                     self.print(bundled_path)
+                    printed_file = True
                 if self.args.format=="values":
                     # Warning: This will print all of the file straight to stdout
                     with open(self._resource_path(bundled, absolute=False)) as f:
                         shutil.copyfileobj(f, self.output or sys.stdout)
+                    printed_file = True
                 break
+            if printed_file:
+                continue # next usage
 
             # Still here? Perhaps it has prov:value ?
             value = entity.value
             if value is not None: # but might be False
                 job[role_name] = value
-                if not self.args.format or self.args.format == "values":
+                if self.args.format in ("values", "any"):
                     self.print(value)
                 elif self.args.format == "files":
                     # We'll have to make a new file!
