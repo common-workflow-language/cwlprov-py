@@ -477,7 +477,11 @@ class Tool:
         return _as_uuid(w)
 
     def validate_bag(self, bag, full_validation=False):
-        valid_bag = bag.validate(fast=not full_validation)
+        try:
+            valid_bag = bag.validate(fast=not full_validation)
+        except BagError as e:
+            _logger.error("BagIt validation failed for: %s: %s", bag.path, e)
+            return Status.INVALID_BAG
         if not valid_bag:
             _logger.error("Invalid BagIt folder: %s", bag.path)
             # Specific errors already output from bagit library
@@ -973,5 +977,9 @@ class Tool:
 
 def main(args=None):
     with Tool(args) as tool:
-        return tool.main()
+        try:
+            return tool.main()
+        except OSError as e:
+            _logger.fatal(e)
+            return Status.IO_ERROR
 
