@@ -189,9 +189,22 @@ def parse_args(args=None):
     parser_runs = subparsers.add_parser('runs', help='list all workflow executions in RO')
 
     parser_rerun = subparsers.add_parser('rerun', 
-        help='rerun a workflow or step', 
+        help='Rerun a workflow or step', 
         parents=[run_option])
 
+    parser_derived = subparsers.add_parser('derived', 
+        help='List what was derived from a data item, based on activity usage/generation')
+    parser_derived.add_argument("--run", default=None, help="workflow run UUID which provenance to examine")
+    parser_derived.add_argument("data", 
+        help="Data file, hash or UUID")
+
+    parser_derived.add_argument("--recurse",  default=True, action='store_true',
+        help="Recurse transitive derivations (default)")
+    parser_derived.add_argument("--no-recurse", default=True, action='store_false',
+        dest="recurse", help="Do not recurse transitive derivations")
+
+    parser_derived.add_argument("--maxdepth", default=None, type=int,    
+        help="Maximum depth of transitive derivations (default: infinity)")
     return parser.parse_args(args)
 
 def _find_bagit_folder(folder=None):
@@ -446,6 +459,7 @@ class Tool:
             "run": self.run,
             "runs": self.runs,
             "rerun": self.rerun,
+            "derived": self.derived,
         }
         
         cmd = COMMANDS.get(args.cmd)
@@ -560,6 +574,13 @@ class Tool:
         if authoredBy or not args.quiet:
             self.print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
+
+    def derived(self):
+        ro = self.ro
+        args = self.args
+        print("It derived")
+        return Status.OK
+
 
     def prov(self):
         ro = self.ro
