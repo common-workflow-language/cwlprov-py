@@ -30,12 +30,12 @@ here = path.abspath(path.dirname(__file__))
 long_description = """
 cwlprov API for Python
 """
-
+import cwlprov
 
 setup(
   name = 'cwlprov',
   packages = find_packages(exclude=['contrib', 'docs', 'tests']), # Required
-  version = '0.0.1',
+  version = cwlprov.__version__,
   description = 'cwlprov API for Python',
   long_description=long_description,
   author = 'Stian Soiland-Reyes',
