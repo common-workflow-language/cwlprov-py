@@ -76,8 +76,10 @@ class Status(IntEnum):
     UNKNOWN_FORMAT = errno.EINVAL
     IO_ERROR = errno.EIO
     BAG_NOT_FOUND = errno.ENOENT
+    PROV_NOT_FOUND = errno.ENOENT
     NOT_A_DIRECTORY = errno.ENOTDIR
     UNKNOWN_RUN = errno.ENODATA
+    UNKNOWN_ACTIVITY = errno.ENODATA
     PERMISSION_ERROR = errno.EACCES
     # User-specified exit codes
     # http://www.tldp.org/LDP/abs/html/exitcodes.html
@@ -575,10 +577,39 @@ class Tool:
             self.print("Executed By: %s" % authoredBy or "(unknown)")
         return Status.OK
 
+    def _derived_from(self, uuid):
+        pass
+
+    def _entity_from_data_argument(self):
+        # Is it a UUID?
+        data_uuid = None
+        data_file = None
+        try:
+            data_uuid = UUID(args.data)
+        except ValueError:
+            pass
+        
+        if data_uuid:
+            _logger.debug("Assuming UUID %s", data_uuid)
+            pass
+        else:
+            # Is it a filename within the RO?
+            try:
+                data_file = self.research_object.resolve_path(args.data)
+            except OSError:
+                pass
+
+            # A file from our current directory?
+            if os.path.exists(args.data):
+                data_file = pathlib.Path(args.data)
+
+
     def derived(self):
         ro = self.ro
         args = self.args
-        print("It derived")
+        
+        _data_entity = _entity_from_data_argument(args.data)
+
         return Status.OK
 
 
@@ -613,38 +644,43 @@ class Tool:
     def outputs(self):
         return self._inputs_or_outputs(is_inputs=False)
 
-    def _activity_from_provenance(self):
-        ro = self.ro
-        args = self.args
-        wf_uri,wf_uuid,wf_name = self._wf_id(self.args.run)
-        a_uri,a_uuid,a_name = self._wf_id()
-        if not self.ro.provenance(wf_uri):            
-            if args.run:
-                _logger.error("No provenance found for: %s", wf_name)
+    def _load_provenance(self, wf_uri):
+        if not self.ro.provenance(wf_uri):
+            if self.args.run:
+                _logger.error("No provenance found for specified run: %s", wf_uri)
                 # We'll need to give up
                 return Status.UNKNOWN_RUN
             else:
-                _logger.debug("No provenance found for: %s", wf_name)
-                _logger.info("Assuming primary provenance --run %s", ro.workflow_id)
-                wf_uri,wf_uuid,wf_name = _as_uuid(ro.workflow_id)
-                if not ro.provenance(wf_uri):
-                    _logger.error("No provenance found for: %s", wf_name)
+                _logger.debug("No provenance found for activity: %s", wf_uri)
+                _logger.info("Assuming primary provenance --run %s", self.ro.workflow_id)
+                wf_uri,_,_ = _as_uuid(self.ro.workflow_id)
+                if not self.ro.provenance(wf_uri):
+                    _logger.error("No provenance found for: %s", wf_uri)
                     return Status.UNKNOWN_RUN
 
         try:
             provenance = Provenance(self.ro, wf_uri)
         except OSError:
             # assume Error already printed by _prov_document
-            return Status.UNKNOWN_RUN
+            return Status.PROV_NOT_FOUND
+        self.provenance = provenance
+        return Status.OK
+
+    def _load_activity_from_provenance(self):
+        wf_uri,wf_uuid,wf_name = self._wf_id(self.args.run)
+        a_uri,a_uuid,a_name = self._wf_id()
+        error = self._load_provenance(wf_uri)
+        if error != Status.OK:
+            return (error, None)
         
-        activity = provenance.activity(a_uri)
-        if not activity:
+        activity = self.provenance.activity(a_uri)
+        if activity:
+            return (Status.OK, activity)
+        else:
             _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
             if not self.args.run and self.hints:
                 print("If the step is in nested provenance, try '--run UUID' as found in 'cwlprov run'")
-            return None
-        self.provenance = provenance
-        return activity
+            return (Status.UNKNOWN_ACTIVITY, None)
 
     def _inputs_or_outputs(self, is_inputs):
         if is_inputs:
@@ -793,9 +829,9 @@ class Tool:
             self.print(" * master workflow")
 
     def rerun(self):
-        a = self._activity_from_provenance()
-        if not a:
-            return Status.UNKNOWN_RUN
+        (error,a) = self._load_activity_from_provenance()
+        if error:
+            return error
         _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
         wf = self._find_workflow()
         if a.id.uri == str(self.ro.workflow_id):
@@ -811,6 +847,11 @@ class Tool:
 
         _logger.info("Running %s %s %s", "cwl-runner", wf, job)
         # TODO: support --cwlrunner cwltoil ? 
+        # Switch to a new temporary directory
+        tmpdir = tempfile.mkdtemp(prefix="cwlprov.", suffix=".tmp")
+        _logger.debug("cd %s", tmpdir)
+        os.chdir(tmpdir)
+        _logger.info("cwl-runner %s %s", wf, job)
         os.execlp("cwl-runner", "cwl-runner", str(wf), str(job))
         # TODO: support other cwl-runner parameters?   before or after wf/job ? 
     
