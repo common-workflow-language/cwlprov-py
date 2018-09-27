@@ -19,8 +19,28 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
+from functools import partial
+
 def first(iterable):
     return next(iter(iterable), None)
 
 def many(s):
     return ", ".join(map(str, s))
+
+ANY_VALUE = object()
+
+def find_dict_with_item(json, val=ANY_VALUE, key="id"):    
+    if hasattr(json, "__getitem__"):
+        if key in json and (val is ANY_VALUE or json[key] == val):
+            return json
+
+    # Search children
+    if hasattr(json, "values"):
+        return find_dict_with_item(json.values(), val, key)
+    elif hasattr(json, "__iter__") and not isinstance(json, str):
+        return first(filter(None, map(
+            partial(find_dict_with_item, key=key, val=val),
+            json)))
+    else:
+        # Can't iterate further, look elsewhere
+        return None

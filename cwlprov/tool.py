@@ -19,6 +19,8 @@ __author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
+from cwlprov import __version__
+
 import arcp
 import argparse
 import bagit
@@ -31,6 +33,7 @@ import os.path
 import pathlib
 import posixpath
 import shutil
+import shlex
 import sys
 import urllib.parse
 
@@ -86,12 +89,15 @@ class Status(IntEnum):
     MISSING_PROFILE = 166
     INVALID_BAG = 167
     UNSUPPORTED_CWLPROV_VERSION = 168
+    UNSUPPORTED_CWL_VERSION = 169
 
 
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='cwlprov explores Research Objects containing provenance of Common Workflow Language executions. <https://w3id.org/cwl/prov/>')
     
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+
     # Common options
     parser.add_argument("--directory", "-d", 
         help="Path to CWLProv Research Object (default: .)",
@@ -188,11 +194,13 @@ def parse_args(args=None):
     parser_run.add_argument("--outputs", "-o", default=False, 
         action='store_true', help="Show outputs")
 
-    parser_runs = subparsers.add_parser('runs', help='list all workflow executions in RO')
+    parser_runs = subparsers.add_parser('runs', help='List all workflow executions in RO')
 
     parser_rerun = subparsers.add_parser('rerun', 
         help='Rerun a workflow or step', 
         parents=[run_option])
+    parser_rerun.add_argument("--cwlrunner", default="cwl-runner", help="Executable for running cwl (default: cwl-runner)")
+    parser_rerun.add_argument("args", nargs=argparse.REMAINDER, help="Additional arguments to cwl runner")
 
     parser_derived = subparsers.add_parser('derived', 
         help='List what was derived from a data item, based on activity usage/generation')
@@ -828,32 +836,57 @@ class Tool:
             self.print("Legend:")
             self.print(" * master workflow")
 
+
+    
     def rerun(self):
-        (error,a) = self._load_activity_from_provenance()
-        if error:
-            return error
-        _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
-        wf = self._find_workflow()
-        if a.id.uri == str(self.ro.workflow_id):
+        if not self.args.id or self.args.id == "-":
+            # Might be used to rerun default workflow
+            self.args.id = None
+        wf_file = self._find_workflow()
+        if not self.args.id and not self.args.run:
             _logger.debug("Master workflow, re-using level 0 primary job")
-            job = self._find_primary_job()
+            job_file = self._find_primary_job()
         else:
             _logger.debug("Recreating job from level 1 provenance")
-            job = self._recreate_job(a)
+            (error,a) = self._load_activity_from_provenance()
+            if error:
+                return error
+            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
+            job = self._recreate_job(a)            
             # TODO: Extract and absolute 'run' from related step
             # in packed.cwl
             # wf = wf + #something
-            
+            _logger.debug("Loading CWL as JSON: %s", wf_file)
+            with open(wf_file) as f:
+                # FIXME: Load as yaml in case it is not JSON?
+                cwl = json.load(f)
+            ver = cwl["cwlVersion"]
+            _logger.debug("Loaded CWL version: %s", ver)
+            if not ver.startswith("v1."):
+                _logger.fatal("Unsupported cwlVersion %s in %s", ver, wf_file)
+                return Status.UNSUPPORTED_CWL_VERSION    
+            a = find_dict_with_item(cwl, "#main/rev")
+            job_file = self._temporary_job(job)
+            _logger.debug("CWL %s", a)            
 
-        _logger.info("Running %s %s %s", "cwl-runner", wf, job)
-        # TODO: support --cwlrunner cwltoil ? 
+
         # Switch to a new temporary directory
         tmpdir = tempfile.mkdtemp(prefix="cwlprov.", suffix=".tmp")
         _logger.debug("cd %s", tmpdir)
         os.chdir(tmpdir)
-        _logger.info("cwl-runner %s %s", wf, job)
-        os.execlp("cwl-runner", "cwl-runner", str(wf), str(job))
-        # TODO: support other cwl-runner parameters?   before or after wf/job ? 
+
+        # Change to the new cwl runner process so Ctrl-C etc works
+        if " " in self.args.cwlrunner:
+            # Split out any cwl-runner arguments
+            cwlargs = shlex.split(self.args.cwlrunner)
+        else:
+            cwlargs = [self.args.cwlrunner]
+        cwlargs.append(str(wf_file))
+        cwlargs.append(str(job_file))
+        cwlargs.extend(self.args.args)
+    
+        _logger.info("%s", " ".join(cwlargs))
+        os.execlp(cwlargs[0], *cwlargs)
     
         # Still here? Above should have taken over this python process!
         _logger.fatal("Could not execute cwl-runner")
@@ -872,10 +905,15 @@ class Tool:
         return p
 
     def _recreate_job(self, activity):
+        # TODO: Actually do it
         job = {"activity": str(activity.id)}
-        with tempfile.NamedTemporaryFile(mode="w", prefix="job", suffix="json", delete=False, encoding="UTF-8") as f:
+        _logger.debug("Rereated job: %s", job)
+        return job
+
+    def _temporary_job(self, job):
+        with tempfile.NamedTemporaryFile(mode="w", prefix="rerun-", suffix=".json", delete=False, encoding="UTF-8") as f:
             json.dump(job, f)
-            print(f.name)
+            _logger.info("Temporary job: %s", f.name)
             return f.name
  
     def _usage(self, activity_id, prov_doc):
