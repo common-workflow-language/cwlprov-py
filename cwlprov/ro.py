@@ -120,7 +120,7 @@ class ResearchObject:
         assert not path.is_absolute()
 
         if not str(path) in self.bag.entries:
-            raise IOError("Not found in bag manifest/tagmanifest: %s", uri_path)
+            raise OSError("Not found in bag manifest/tagmanifest: %s", uri_path)
         # resolve as OS-specific path
         absolute = pathlib.Path(self.root_path, path)
         # ensure it did not climb out (will throw ValueError if not)
