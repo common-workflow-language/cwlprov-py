@@ -913,13 +913,14 @@ class Tool:
         wf_file = self._find_workflow()
         if not self.args.id and not self.args.run:
             _logger.debug("Master workflow, re-using level 0 primary job")
+            wf_arg = wf_file
             job_file = self._find_primary_job()
         else:
             _logger.debug("Recreating job from level 1 provenance")
             (error,a) = self._load_activity_from_provenance()
             if error:
                 return error
-            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)            
+            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
             job = self._recreate_job(a, absolute=True)
             # TODO: Extract and absolute 'run' from related step
             # in packed.cwl
@@ -933,9 +934,20 @@ class Tool:
             if not ver.startswith("v1."):
                 _logger.fatal("Unsupported cwlVersion %s in %s", ver, wf_file)
                 return Status.UNSUPPORTED_CWL_VERSION    
-            a = find_dict_with_item(cwl, "#main/rev")
-            job_file = self._temporary_job(job)
-            _logger.debug("CWL %s", a)            
+            step = find_dict_with_item(cwl, "#main/rev")
+            if not step:
+                _logger.error("Could not find step for ")
+
+            _logger.debug("Found CWL step: %s", step)
+            if isinstance(step["run"], str) and step["run"].startswith("#"):
+                # URI reference within packed.cwl
+                job["cwl:tool"] = "%s%s" % (wf_file, step["run"])
+            else:
+                _logger.warning("Baaaaaaaaaaaaaaa")
+
+            #job_file = self._temporary_job(job)
+            wf_arg = self._temporary_job(job)
+            job_file = ""
 
 
         # Switch to a new temporary directory
@@ -949,7 +961,7 @@ class Tool:
             cwlargs = shlex.split(self.args.cwlrunner)
         else:
             cwlargs = [self.args.cwlrunner]
-        cwlargs.append(str(wf_file))
+        cwlargs.append(str(wf_arg))
         cwlargs.append(str(job_file))
         cwlargs.extend(self.args.args)
     
