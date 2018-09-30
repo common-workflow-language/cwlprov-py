@@ -485,7 +485,7 @@ class Tool:
 
     def _resource_path(self, path, absolute=False):
         p = self.ro.resolve_path(str(path))
-        return self._absolute_or_relative_path(p)
+        return self._absolute_or_relative_path(p, absolute)
 
     def _absolute_or_relative_path(self, path, absolute=False):
         p = Path(path)
@@ -808,6 +808,74 @@ class Tool:
         if self.args.format == "json":
             self.print(json.dumps(job))
 
+    def _entity_as_json(self, entity, absolute=True):
+        _logger.debug("json from %s", entity)
+        file_candidates = [entity]
+        file_candidates.extend(entity.specializationOf())
+        for file_candidate in file_candidates:
+            bundled = self.ro.bundledAs(uri=file_candidate.uri)            
+            if not bundled:
+                continue
+            _logger.debug("entity %s bundledAs %s", file_candidate.uri, bundled)
+            bundled_path = self._resource_path(bundled, absolute=absolute)
+            json = {
+                "class": "File",
+                "path": str(bundled_path),
+            }
+            # TODO: Handle secondary files
+            _logger.debug("file as json: %s", json)
+            return json
+
+        # Perhaps it has prov:value ?
+        value = entity.value
+        if value is not None: # ..but might be False
+            _logger.debug("value as json: %s", value)
+            return value
+        
+        # TODO: Handle Directory
+        # TODO: Handle collection
+
+
+        # Still here? No idea, fallback is just return the URI :(
+        json = {
+            "class": "File", # ??
+            "location": entity.uri,
+        }
+        _logger.debug("uri as json: %s", json)
+        return json
+
+    def _inputs_or_outputs_job(self, activity, is_inputs, absolute):
+        activity_id = activity.id
+
+        job = {}
+
+        if is_inputs:
+            records = activity.usage()
+        else:
+            records = activity.generation()
+        for u in records:
+            entity_id = u.entity_id
+            role = u.role
+
+            # Naively assume CWL identifier structure of URI
+            if not role:
+                _logger.warning("Unknown role for %s, skipping", u)
+                role_name = None
+                continue
+            
+            # poor mans CWL parameter URI deconstruction
+            role_name = str(role)
+            role_name = role_name.split("/")[-1]
+            role_name = urllib.parse.unquote(role_name)
+
+            entity = u.entity()
+            if not entity:
+                _logger.warning("No provenance for entity %s", entity_id)
+                continue
+            job[role_name] = self._entity_as_json(entity, absolute=absolute)
+
+        return job
+
     def runs(self):
         ro = self.ro
         args = self.args        
@@ -851,8 +919,8 @@ class Tool:
             (error,a) = self._load_activity_from_provenance()
             if error:
                 return error
-            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
-            job = self._recreate_job(a)            
+            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)            
+            job = self._recreate_job(a, absolute=True)
             # TODO: Extract and absolute 'run' from related step
             # in packed.cwl
             # wf = wf + #something
@@ -904,10 +972,10 @@ class Tool:
         p = self.ro.resolve_path(str(path))
         return p
 
-    def _recreate_job(self, activity):
+    def _recreate_job(self, activity, absolute):
         # TODO: Actually do it
-        job = {"activity": str(activity.id)}
-        _logger.debug("Rereated job: %s", job)
+        job = self._inputs_or_outputs_job(activity, is_inputs=True, absolute=absolute)
+        _logger.debug("Recreated job: %s", job)
         return job
 
     def _temporary_job(self, job):
