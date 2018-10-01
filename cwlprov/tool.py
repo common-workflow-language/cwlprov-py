@@ -956,7 +956,7 @@ class Tool:
                     wf_arg = "%s%s" % (wf_file, run)
                     _logger.info("Tool %s", wf_arg)
                 else:
-                    _logger.warning("Non-local 'run' reference %s", step_id)                    
+                    _logger.warning("Non-local 'run' %s might be missing from RO", step_id)                    
                     wf_arg = run
                     # TODO: Check if it's in snapshot/ or an absolute URI?
 
