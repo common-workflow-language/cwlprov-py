@@ -83,13 +83,16 @@ class Status(IntEnum):
     NOT_A_DIRECTORY = errno.ENOTDIR
     UNKNOWN_RUN = errno.ENODATA
     UNKNOWN_ACTIVITY = errno.ENODATA
+    UNKNOWN_TOOL = errno.ENODATA
     PERMISSION_ERROR = errno.EACCES
+    NOT_IMPLEMENTED = errno.ENOSYS
     # User-specified exit codes
     # http://www.tldp.org/LDP/abs/html/exitcodes.html
     MISSING_PROFILE = 166
     INVALID_BAG = 167
     UNSUPPORTED_CWLPROV_VERSION = 168
-    UNSUPPORTED_CWL_VERSION = 169
+    CANT_LOAD_CWL = 169
+    MISSING_PLAN = 170
 
 
 
@@ -904,14 +907,13 @@ class Tool:
             self.print("Legend:")
             self.print(" * master workflow")
 
-
     
     def rerun(self):
         if not self.args.id or self.args.id == "-":
             # Might be used to rerun default workflow
             self.args.id = None
-        wf_file = self._find_workflow()
         if not self.args.id and not self.args.run:
+            wf_file = self._find_workflow()
             _logger.debug("Master workflow, re-using level 0 primary job")
             wf_arg = wf_file
             job_file = self._find_primary_job()
@@ -920,36 +922,66 @@ class Tool:
             (error,a) = self._load_activity_from_provenance()
             if error:
                 return error
-            _logger.info("Rerunning <%s> %s", a.id.uri, a.label)
+            _logger.info("Rerunning step <%s> %s", a.id.uri, a.label)
+            # Create job JSON from original input values
             job = self._recreate_job(a, absolute=True)
-            # TODO: Extract and absolute 'run' from related step
-            # in packed.cwl
-            # wf = wf + #something
-            _logger.debug("Loading CWL as JSON: %s", wf_file)
-            with open(wf_file) as f:
-                # FIXME: Load as yaml in case it is not JSON?
-                cwl = json.load(f)
-            ver = cwl["cwlVersion"]
-            _logger.debug("Loaded CWL version: %s", ver)
-            if not ver.startswith("v1."):
-                _logger.fatal("Unsupported cwlVersion %s in %s", ver, wf_file)
-                return Status.UNSUPPORTED_CWL_VERSION    
-            step = find_dict_with_item(cwl, "#main/rev")
-            if not step:
-                _logger.error("Could not find step for ")
+            job_file = self._temporary_job(job)
 
-            _logger.debug("Found CWL step: %s", step)
-            if isinstance(step["run"], str) and step["run"].startswith("#"):
-                # URI reference within packed.cwl
-                job["cwl:tool"] = "%s%s" % (wf_file, step["run"])
+            # Now find which tool was rerun
+            p = a.plan()
+            if not p:
+                _logger.warning("Could not find Association with Plan for %s" % a)
+                return Status.MISSING_PLAN
+            _logger.info("Step was executed with plan %s", p.uri)
+
+            wf_file = self.ro.resolve_path(p.uri)
+            if not "#" in p.uri:
+                # Top-level cwl file
+                wf_arg = wf_file
             else:
-                _logger.warning("Baaaaaaaaaaaaaaa")
+                # part of cwl file (e.g. a command line tool)
 
-            #job_file = self._temporary_job(job)
-            wf_arg = self._temporary_job(job)
-            job_file = ""
+                # Workaround as Association links to the identified workflow step, 
+                # but cwltool needs the (sometimes not identified) reference behind
+                # the step's "run" property
+                cwl = self._load_cwl(wf_file)
+                if not cwl:
+                    return Status.CANT_LOAD_CWL
+                step_id = "#%s" % p.localpart
+                run = self._find_step_run(cwl, step_id)
+                if not isinstance(run, str):
+                    _logger.error("Not implemented: rerun of inline 'run' of step %s", step_id)
+                    return Status.NOT_IMPLEMENTED
+                if run.startswith("#"):
+                    wf_arg = "%s%s" % (wf_file, run)
+                    _logger.info("Tool %s", wf_arg)
+                else:
+                    _logger.warning("Non-local 'run' reference %s", step_id)                    
+                    wf_arg = run
+                    # TODO: Check if it's in snapshot/ or an absolute URI?
 
+        return self._exec_cwlrunner(wf_arg, job_file)
 
+    def _load_cwl(self, wf_file):
+        _logger.debug("Loading CWL as JSON: %s", wf_file)
+        with open(wf_file) as f:
+            # FIXME: Load as yaml in case it is not JSON?
+            cwl = json.load(f)
+        ver = cwl["cwlVersion"]
+        _logger.debug("Loaded CWL version: %s", ver)
+        if not ver.startswith("v1."):
+            _logger.fatal("Unsupported cwlVersion %s in %s", ver, wf_file)
+            return None
+        return cwl
+
+    def _find_step_run(self, cwl, step_id):
+        step = find_dict_with_item(cwl, step_id)
+        if not step:
+            _logger.error("Could not find step for ")
+        _logger.debug("Found CWL step: %s", step)
+        return step["run"]
+
+    def _exec_cwlrunner(self, wf_arg, job_file):
         # Switch to a new temporary directory
         tmpdir = tempfile.mkdtemp(prefix="cwlprov.", suffix=".tmp")
         _logger.debug("cd %s", tmpdir)

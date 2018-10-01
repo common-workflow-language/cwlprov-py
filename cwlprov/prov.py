@@ -62,6 +62,7 @@ class Provenance:
     def __repr__(self):
         return "Provenance<%s from %s>" % (self.uri, self._path)
 
+
     @property
     def uri(self):
         return self.run_id.uri
@@ -115,7 +116,7 @@ class _Prov:
     def __init__(self, provenance, record):
         self.provenance = provenance
         self.record = record
-        _logger.info(record)
+        _logger.debug(record)
 
     @property
     def id(self):
@@ -147,16 +148,41 @@ class Activity(_Prov):
     def usage(self, role=None):
         usage = self.provenance.record_with_attr(ProvUsage, self.id, PROV_ATTR_ACTIVITY)
         return (Usage(self.provenance, u) for u in usage)
+
     def generation(self, role=None):
         generation = self.provenance.record_with_attr(ProvGeneration, self.id, PROV_ATTR_ACTIVITY)
         return (Generation(self.provenance, g) for g in generation)
 
+    def association(self):
+        associations = self.provenance.record_with_attr(ProvAssociation, self.id, PROV_ATTR_ACTIVITY)
+        return (Association(self.provenance, a) for a in associations)
+
+    def plan(self):
+        for a in self.association():
+            if a.plan_id:
+                return a.plan_id
+
+class Association(_Prov):    
+    @property
+    def agent_id(self):
+        return self._prov_attr(PROV_ATTR_AGENT)
+
+    @property
+    def activity_id(self):
+        return self._prov_attr(PROV_ATTR_ACTIVITY)
+
+    def activity(self):
+        a = self.activity_id
+        return a and self.provenance.activity(a)
+
+    @property
+    def plan_id(self):
+        return self._prov_attr(PROV_ATTR_PLAN)
 
 class Specialization(_Prov):
-    
     @property
     def general_entity_id(self):
-        return  self._prov_attr(PROV_ATTR_GENERAL_ENTITY)
+        return self._prov_attr(PROV_ATTR_GENERAL_ENTITY)
 
     def general_entity(self):
         g = self.general_entity_id
