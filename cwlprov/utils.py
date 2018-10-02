@@ -44,3 +44,9 @@ def find_dict_with_item(json, val=ANY_VALUE, key="id"):
     else:
         # Can't iterate further, look elsewhere
         return None
+
+def average(it):
+    l = list(it)
+    if not l:
+        return None
+    return sum(l[1:], l[0]) / len(l)

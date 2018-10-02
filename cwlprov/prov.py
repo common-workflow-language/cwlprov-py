@@ -118,6 +118,10 @@ class _Prov:
         self.record = record
         _logger.debug(record)
 
+    def _records(self, ProvClass, CreateClass, attr):
+        records = self.provenance.record_with_attr(ProvClass, self.id, attr)
+        return (CreateClass(self.provenance, r) for r in records)
+
     @property
     def id(self):
         return self.record.identifier
@@ -145,24 +149,67 @@ class _Prov:
 
 
 class Activity(_Prov):
-    def usage(self, role=None):
-        usage = self.provenance.record_with_attr(ProvUsage, self.id, PROV_ATTR_ACTIVITY)
-        return (Usage(self.provenance, u) for u in usage)
 
-    def generation(self, role=None):
-        generation = self.provenance.record_with_attr(ProvGeneration, self.id, PROV_ATTR_ACTIVITY)
-        return (Generation(self.provenance, g) for g in generation)
+    def usage(self):
+        return self._records(ProvUsage, Usage, PROV_ATTR_ACTIVITY)
+
+    def generation(self):
+        return self._records(ProvGeneration, Generation, PROV_ATTR_ACTIVITY)
 
     def association(self):
-        associations = self.provenance.record_with_attr(ProvAssociation, self.id, PROV_ATTR_ACTIVITY)
-        return (Association(self.provenance, a) for a in associations)
+        return self._records(ProvAssociation, Association, PROV_ATTR_ACTIVITY)
 
     def plan(self):
-        for a in self.association():
-            if a.plan_id:
-                return a.plan_id
+        return first(a.plan_id for a in self.association() if a.plan_id)
+    
+    def steps(self):
+        starts = self._records(ProvStart, Start, PROV_ATTR_STARTER)
+        for s in starts:
+            activity = s.activity()
+            if activity:
+                yield activity
 
-class Association(_Prov):    
+    def start(self):
+        return first(self._records(ProvStart, Start, PROV_ATTR_ACTIVITY))
+
+    def end(self):
+        return first(self._records(ProvEnd, End, PROV_ATTR_ACTIVITY))
+
+    def duration(self):
+        # Lots of guards in case start or end are missing
+        start = self.start()
+        s = start and start.time
+        end = self.end()
+        e = end and end.time
+        return s and e and e-s
+
+class _Time(_Prov):
+    @property
+    def time(self):
+        return self._prov_attr(PROV_ATTR_TIME)
+
+class _Start_or_End(_Time):
+    @property
+    def activity_id(self):
+        return self._prov_attr(PROV_ATTR_ACTIVITY)
+    def activity(self):
+        a = self.activity_id
+        return a and self.provenance.activity(a)
+
+    @property
+    def starter_id(self):
+        return self._prov_attr(PROV_ATTR_STARTER)
+    def starter_activity(self):
+        a = self.starter_id
+        return a and self.provenance.activity(a)
+    
+
+class Start(_Start_or_End):
+    pass
+class End(_Start_or_End):
+    pass
+
+class Association(_Prov):
     @property
     def agent_id(self):
         return self._prov_attr(PROV_ATTR_AGENT)
@@ -199,20 +246,18 @@ class Specialization(_Prov):
 class Entity(_Prov):
 
     def specializationOf(self):
-        records = self.provenance.record_with_attr(ProvSpecialization, self.id, PROV_ATTR_SPECIFIC_ENTITY)
-        specializations = (Specialization(self.provenance, s) for s in records)
+        specializations = self._records(ProvSpecialization, Specialization, PROV_ATTR_SPECIFIC_ENTITY)
         return (s.general_entity() for s in specializations)
 
     def generalizationOf(self):
-        records = self.provenance.record_with_attr(ProvSpecialization, self.id, PROV_ATTR_GENERAL_ENTITY)
-        specializations = (Specialization(self.provenance, s) for s in records)
+        specializations = self._records(ProvSpecialization, Specialization, PROV_ATTR_GENERAL_ENTITY)
         return (s.specific_entity() for s in specializations)
 
     @property
     def value(self):
         return self._prov_attr(PROV_VALUE)
 
-class _Usage_Or_Generation(_Prov):
+class _Usage_Or_Generation(_Time):
 
     @property
     def entity_id(self):
@@ -225,9 +270,6 @@ class _Usage_Or_Generation(_Prov):
     @property
     def role(self):
         return self._prov_attr(PROV_ROLE)
-
-    def time(self):
-        return self._prov_attr(PROV_ATTR_TIME)
     
 class Generation(_Usage_Or_Generation):
     pass

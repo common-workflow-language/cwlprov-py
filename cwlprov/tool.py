@@ -218,7 +218,14 @@ def parse_args(args=None):
 
     parser_derived.add_argument("--maxdepth", default=None, type=int,    
         help="Maximum depth of transitive derivations (default: infinity)")
+    
+    parser_stats = subparsers.add_parser('stats', 
+        help='Calculate statistics on step execution times',
+        parents=[run_option])
+    
     return parser.parse_args(args)
+
+
 
 def _find_bagit_folder(folder=None):
     # Absolute so we won't climb to ../../../../../ forever
@@ -473,6 +480,7 @@ class Tool:
             "runs": self.runs,
             "rerun": self.rerun,
             "derived": self.derived,
+            "stats": self.stats,
         }
         
         cmd = COMMANDS.get(args.cmd)
@@ -622,6 +630,32 @@ class Tool:
         _data_entity = _entity_from_data_argument(args.data)
 
         return Status.OK
+
+    def stats(self):
+        ro = self.ro
+        args = self.args
+        
+        error,activity = self._load_activity_from_provenance()
+        if error:
+            return error
+
+        plans = {}
+
+        for step in activity.steps():
+            plan = step.plan()
+            if not plan:
+                plan = step.identifier
+            durations = plans.setdefault(plan, [])            
+            dur = step.duration()
+            if dur:
+                durations.append(dur)
+
+        for plan in plans:
+            durations = plans[plan]
+            self.print("%s %s", plan.localpart or plan, average(durations))
+
+        return Status.OK
+
 
 
     def prov(self):
