@@ -219,8 +219,8 @@ def parse_args(args=None):
     parser_derived.add_argument("--maxdepth", default=None, type=int,    
         help="Maximum depth of transitive derivations (default: infinity)")
     
-    parser_stats = subparsers.add_parser('stats', 
-        help='Calculate statistics on step execution times',
+    parser_stats = subparsers.add_parser('runtimes', 
+        help='Calculate average step execution runtimes',
         parents=[run_option])
     
     return parser.parse_args(args)
@@ -480,7 +480,7 @@ class Tool:
             "runs": self.runs,
             "rerun": self.rerun,
             "derived": self.derived,
-            "stats": self.stats,
+            "runtimes": self.runtimes,
         }
         
         cmd = COMMANDS.get(args.cmd)
@@ -631,7 +631,7 @@ class Tool:
 
         return Status.OK
 
-    def stats(self):
+    def runtimes(self):
         ro = self.ro
         args = self.args
         
@@ -649,10 +649,19 @@ class Tool:
             dur = step.duration()
             if dur:
                 durations.append(dur)
+        
+        # TODO: Support CSV output?
 
+        # Assume no more than 99 hours for well-aligned columns
+        format="%015s %015s %015s %04s %s"
+        if not args.quiet:
+            self.print(format, *("min avg max n step".split()))
+        # TODO: Sort from max-to-lowest average?
         for plan in plans:
             durations = plans[plan]
-            self.print("%s %s", plan.localpart or plan, average(durations))
+            self.print(format,
+                min(durations), average(durations), max(durations), len(durations),
+                plan.localpart or plan)
 
         return Status.OK
 
