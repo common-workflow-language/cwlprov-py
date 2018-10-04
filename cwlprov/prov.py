@@ -21,10 +21,11 @@ __copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
 __license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 
 import logging
-from prov.identifier import Identifier
+from prov.identifier import Identifier, Namespace
 from prov.model import *
-
 from .utils import *
+
+CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
 
 _logger = logging.getLogger(__name__)
 
@@ -256,6 +257,22 @@ class Entity(_Prov):
     @property
     def value(self):
         return self._prov_attr(PROV_VALUE)
+
+    @property
+    def basename(self):
+        return self._prov_attr(CWLPROV["basename"])
+    @property
+    def nameroot(self):
+        return self._prov_attr(CWLPROV["nameroot"])
+    @property
+    def nameext(self):
+        return self._prov_attr(CWLPROV["nameext"])
+    @property
+    def secondaryFiles(self):
+        return [] # TODO
+
+
+
 
 class _Usage_Or_Generation(_Time):
 

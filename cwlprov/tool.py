@@ -868,6 +868,13 @@ class Tool:
                 "class": "File",
                 "path": str(bundled_path),
             }
+            if entity.basename:
+                json["basename"] = entity.basename
+            if entity.nameroot:
+                json["nameroot"] = entity.nameroot
+            if entity.nameext:
+                json["nameext"] = entity.nameext
+
             # TODO: Handle secondary files
             _logger.debug("file as json: %s", json)
             return json
