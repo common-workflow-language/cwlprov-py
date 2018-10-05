@@ -1029,7 +1029,10 @@ class Tool:
         if not step:
             _logger.error("Could not find step for ")
         _logger.debug("Found CWL step: %s", step)
-        return step["run"]
+        if step.get("class") in ("Workflow", "CommandLineTool", "ExpressionTool"):
+            # We can execute directly
+            return step_id
+        return step.get("run")
 
     def _exec_cwlrunner(self, wf_arg, job_file):
         # Switch to a new temporary directory
