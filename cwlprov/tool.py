@@ -874,8 +874,10 @@ class Tool:
                 json["nameroot"] = entity.nameroot
             if entity.nameext:
                 json["nameext"] = entity.nameext
-
-            # TODO: Handle secondary files
+            f = partial(self._entity_as_json, absolute=absolute)
+            secondaries = list(map(f, entity.secondary_files()))
+            if secondaries:
+                json["secondaries"] = secondaries
             _logger.debug("file as json: %s", json)
             return json
 

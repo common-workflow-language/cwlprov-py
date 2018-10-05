@@ -132,6 +132,13 @@ class _Prov:
         return self._prov_attr("prov:label")
 
     @property
+    def type(self):
+        return self._prov_attr("prov:type")
+
+    def types(self):
+        return set(self._prov_attrs("prov:type"))
+
+    @property
     def uri(self):
         i = self.id
         return i and i.uri
@@ -267,12 +274,37 @@ class Entity(_Prov):
     @property
     def nameext(self):
         return self._prov_attr(CWLPROV["nameext"])
+
+    def derivations(self):
+        return self._records(ProvDerivation, Derivation, PROV_ATTR_USED_ENTITY)
+
+    def secondary_files(self):
+        return [d.generated_entity() for d in self.derivations() 
+                if CWLPROV["SecondaryFile"] in d.types()]
+
+class Derivation(_Prov):
     @property
-    def secondaryFiles(self):
-        return [] # TODO
+    def generated_entity_id(self):
+        return self._prov_attr(PROV_ATTR_GENERATED_ENTITY)
 
+    def generated_entity(self):
+        e_id = self.generated_entity_id
+        return e_id and self.provenance.entity(e_id)
 
+    @property
+    def used_entity_id(self):
+        return self._prov_attr(PROV_ATTR_USED_ENTITY)
 
+    def used_entity(self):
+        e_id = self.generated_entity_id
+        return e_id and self.provenance.entity(e_id)
+
+    @property
+    def generation_id(self):
+        return self._prov_attr(PROV_ATTR_GENERATION)
+    @property
+    def usage_id(self):
+        return self._prov_attr(PROV_ATTR_USAGE)
 
 class _Usage_Or_Generation(_Time):
 
