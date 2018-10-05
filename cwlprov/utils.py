@@ -30,8 +30,8 @@ def many(s):
 ANY_VALUE = object()
 
 def find_dict_with_item(json, val=ANY_VALUE, key="id"):    
-    if hasattr(json, "__getitem__"):
-        if key in json and (val is ANY_VALUE or json[key] == val):
+    if hasattr(json, "get"):
+        if json.get(key, ANY_VALUE) == val:
             return json
 
     # Search children
