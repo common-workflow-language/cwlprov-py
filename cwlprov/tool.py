@@ -1079,7 +1079,7 @@ class Tool:
 
     def _temporary_job(self, job):
         with tempfile.NamedTemporaryFile(mode="w", prefix="rerun-", suffix=".json", delete=False, encoding="UTF-8") as f:
-            json.dump(job, f)
+            json.dump(job, f, indent=2)
             _logger.info("Temporary job: %s", f.name)
             return f.name
  
