@@ -1,5 +1,7 @@
 # CWLProv Python tool
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1471375.svg)](https://doi.org/10.5281/zenodo.1471375)
+
 The `cwlprov` Python tool is a command line interface to validate and inspect 
 [CWLProv](https://w3id.org/cwl/prov) Research Objects that capture workflow runs,
 typically executed in a [Common Workflow Language](https://www.commonwl.org/)
@@ -114,8 +116,7 @@ Many of the commands accept additional arguments, which can be accessed by `cwlp
     --labels              Show activity labels
     --no-labels, -L       Do not show activity labels
     --inputs, -i          Show inputs
-  --outputs, -o         Show outputs
-
+    --outputs, -o         Show outputs
 
 ### Validation
 
