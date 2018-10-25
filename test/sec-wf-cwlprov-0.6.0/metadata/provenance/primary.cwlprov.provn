@@ -1,0 +1,46 @@
+document
+  prefix wfprov <http://purl.org/wf4ever/wfprov#>
+  prefix wfdesc <http://purl.org/wf4ever/wfdesc#>
+  prefix cwlprov <https://w3id.org/cwl/prov#>
+  prefix foaf <http://xmlns.com/foaf/0.1/>
+  prefix schema <http://schema.org/>
+  prefix orcid <https://orcid.org/>
+  prefix id <urn:uuid:>
+  prefix data <urn:hash::sha1:>
+  prefix sha256 <nih:sha-256;>
+  prefix researchobject <arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/>
+  prefix metadata <arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/metadata/>
+  prefix provenance <arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/metadata/provenance/>
+  prefix wf <arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/workflow/packed.cwl#>
+  prefix input <arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/workflow/primary-job.json#>
+  prefix wf4ever <http://purl.org/wf4ever/wf4ever#>
+  
+  agent(id:9e54e590-5b53-4071-b1ee-705e06c6a471)
+  agent(orcid:0000-0001-9842-9718, [prov:type='prov:Person', prov:type='schema:Person'])
+  actedOnBehalfOf(id:9e54e590-5b53-4071-b1ee-705e06c6a471, orcid:0000-0001-9842-9718, -)
+  agent(id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, [prov:type='prov:SoftwareAgent', prov:type='wfprov:WorkflowEngine', prov:label="cwltool 1.0.20180925133620"])
+  wasStartedBy(id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, -, id:9e54e590-5b53-4071-b1ee-705e06c6a471, 2018-10-05T08:51:39.049456)
+  activity(id:3517857d-670b-4079-92f2-f7fb0d4f0292, 2018-10-05T08:51:39.049507, -, [prov:type='wfprov:WorkflowRun', prov:label="Run of workflow/packed.cwl#main"])
+  wasAssociatedWith(id:3517857d-670b-4079-92f2-f7fb0d4f0292, id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, wf:main)
+  wasStartedBy(id:3517857d-670b-4079-92f2-f7fb0d4f0292, -, id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, 2018-10-05T08:51:39.049627)
+  entity(wf:main, [prov:type='wfdesc:Workflow', prov:type='prov:Plan', prov:label="Prospective provenance"])
+  entity(wf:main/step1, [prov:type='prov:Plan', prov:type='wfdesc:Process'])
+  entity(wf:main, [wfdesc:hasSubProcess='wf:main/step1', prov:label="Prospective provenance"])
+  entity(data:4cbd040533a2f43fc6691d773d510cda70f4126a, [prov:type='wfprov:Artifact'])
+  entity(id:d5dcee4b-5dfe-4c4c-bbc9-55bf36d70940, [prov:type='wf4ever:File', prov:type='wfprov:Artifact', cwlprov:basename="blah", cwlprov:nameroot="blah", cwlprov:nameext=""])
+  specializationOf(id:d5dcee4b-5dfe-4c4c-bbc9-55bf36d70940, data:4cbd040533a2f43fc6691d773d510cda70f4126a)
+  used(id:3517857d-670b-4079-92f2-f7fb0d4f0292, id:d5dcee4b-5dfe-4c4c-bbc9-55bf36d70940, 2018-10-05T08:51:39.079018, [prov:role='wf:main/file1'])
+  activity(id:9928b80f-0a58-43ed-ac3d-a77004923de5, -, -, [prov:type='wfprov:ProcessRun', prov:label="Run of workflow/packed.cwl#main/step1"])
+  wasAssociatedWith(id:9928b80f-0a58-43ed-ac3d-a77004923de5, id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, wf:main/step1)
+  wasStartedBy(id:9928b80f-0a58-43ed-ac3d-a77004923de5, -, id:3517857d-670b-4079-92f2-f7fb0d4f0292, 2018-10-05T08:51:39.082497)
+  entity(data:4cbd040533a2f43fc6691d773d510cda70f4126a, [prov:type='wfprov:Artifact'])
+  entity(id:d70c75c8-293f-416e-9c5b-1647b59b8356, [prov:type='wf4ever:File', prov:type='wfprov:Artifact', cwlprov:basename="blah", cwlprov:nameroot="blah", cwlprov:nameext=""])
+  specializationOf(id:d70c75c8-293f-416e-9c5b-1647b59b8356, data:4cbd040533a2f43fc6691d773d510cda70f4126a)
+  entity(data:9c6b057a2b9d96a4067a749ee3b3b0158d390cf1, [prov:type='wfprov:Artifact'])
+  entity(id:a0c8caf5-6b73-4d60-8998-0d7bf095a733, [prov:type='wf4ever:File', prov:type='wfprov:Artifact', cwlprov:basename="blah.idx", cwlprov:nameroot="blah", cwlprov:nameext=".idx"])
+  specializationOf(id:a0c8caf5-6b73-4d60-8998-0d7bf095a733, data:9c6b057a2b9d96a4067a749ee3b3b0158d390cf1)
+  wasDerivedFrom(id:a0c8caf5-6b73-4d60-8998-0d7bf095a733, id:d70c75c8-293f-416e-9c5b-1647b59b8356, -, -, -, [prov:type='cwlprov:SecondaryFile'])
+  used(id:9928b80f-0a58-43ed-ac3d-a77004923de5, id:d70c75c8-293f-416e-9c5b-1647b59b8356, 2018-10-05T08:51:39.084318, [prov:role='wf:main/step1/file1'])
+  wasEndedBy(id:9928b80f-0a58-43ed-ac3d-a77004923de5, -, id:3517857d-670b-4079-92f2-f7fb0d4f0292, 2018-10-05T08:51:39.090331)
+  wasEndedBy(id:3517857d-670b-4079-92f2-f7fb0d4f0292, -, id:d9c16ea5-c3fd-4c56-b125-f3a5207e6c38, 2018-10-05T08:51:39.092604)
+endDocument

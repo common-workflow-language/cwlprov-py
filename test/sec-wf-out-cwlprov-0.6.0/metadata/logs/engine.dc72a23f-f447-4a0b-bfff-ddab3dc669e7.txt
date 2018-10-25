@@ -1,0 +1,13 @@
+[2018-10-05T07:52:36,603Z] [cwltool] /home/stain/src/cwlprov-py/venv/bin/cwltool --provenance sec-wf-out sec-wf-out.cwl
+[2018-10-05T07:52:36,603Z] Resolved 'sec-wf-out.cwl' to 'file:///home/stain/src/cwltool/tests/wf/sec-wf-out.cwl'
+[2018-10-05T07:52:38,008Z] [workflow ] start
+[2018-10-05T07:52:38,008Z] [workflow ] starting step step1
+[2018-10-05T07:52:38,008Z] [step step1] start
+[2018-10-05T07:52:38,010Z] [job step1] /tmp/tmpmxi4_nxn$ /bin/sh \
+    -c \
+    echo "abc" > f.txt; echo "3" > f.txt.size; echo "a" > f.txt.firstletter; echo "a,b,c" > f.csv; echo "1,2,3" > f.csv.columns; echo "ignored" > f.txt.ignoreme;
+
+[2018-10-05T07:52:38,023Z] [job step1] completed success
+[2018-10-05T07:52:38,023Z] [step step1] completed success
+[2018-10-05T07:52:38,024Z] [workflow ] completed success
+[2018-10-05T07:52:38,145Z] Final process status is success

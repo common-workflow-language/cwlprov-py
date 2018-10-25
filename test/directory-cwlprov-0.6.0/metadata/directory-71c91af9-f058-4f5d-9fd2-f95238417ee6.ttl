@@ -1,0 +1,37 @@
+@prefix id: <urn:uuid:> .
+@prefix ore: <http://www.openarchives.org/ore/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ro: <http://purl.org/wf4ever/ro#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:uuid:02e1432c-27f4-42fb-a81f-94aa206de11c> a ro:FolderEntry,
+        ore:Proxy,
+        prov:Entity ;
+    ro:entryName "c"^^xsd:string ;
+    ore:proxyFor <urn:uuid:818221f9-80d6-4202-b7d8-3212775406ce> ;
+    ore:proxyIn <urn:uuid:71c91af9-f058-4f5d-9fd2-f95238417ee6> .
+
+<urn:uuid:498b1984-b64b-4e9c-82e1-ea1e7a8971fb> a ro:FolderEntry,
+        ore:Proxy,
+        prov:Entity ;
+    ro:entryName "b"^^xsd:string ;
+    ore:proxyFor <urn:uuid:4cdcf941-ed71-48f3-be59-f8384090afec> ;
+    ore:proxyIn <urn:uuid:71c91af9-f058-4f5d-9fd2-f95238417ee6> .
+
+id:a5626d3c-4388-4077-ab15-5706d691f13a a ro:FolderEntry,
+        ore:Proxy,
+        prov:Entity ;
+    ro:entryName "a"^^xsd:string ;
+    ore:proxyFor <urn:uuid:4b9792b2-6672-4d00-965e-497675e9a469> ;
+    ore:proxyIn <urn:uuid:71c91af9-f058-4f5d-9fd2-f95238417ee6> .
+
+<urn:uuid:71c91af9-f058-4f5d-9fd2-f95238417ee6> a ro:Folder,
+        ore:Aggregation,
+        prov:Entity ;
+    ore:aggregates <urn:uuid:02e1432c-27f4-42fb-a81f-94aa206de11c>,
+        <urn:uuid:498b1984-b64b-4e9c-82e1-ea1e7a8971fb>,
+        id:a5626d3c-4388-4077-ab15-5706d691f13a .
+

@@ -1,0 +1,21 @@
+{
+    "file1": {
+        "class": "File",
+        "location": "../data/4c/4cbd040533a2f43fc6691d773d510cda70f4126a",
+        "size": 5,
+        "basename": "blah",
+        "nameroot": "blah",
+        "nameext": "",
+        "secondaryFiles": [
+            {
+                "location": "../data/9c/9c6b057a2b9d96a4067a749ee3b3b0158d390cf1",
+                "basename": "blah.idx",
+                "class": "File",
+                "nameroot": "blah",
+                "nameext": ".idx",
+                "checksum": "sha1$9c6b057a2b9d96a4067a749ee3b3b0158d390cf1"
+            }
+        ],
+        "checksum": "sha1$4cbd040533a2f43fc6691d773d510cda70f4126a"
+    }
+}

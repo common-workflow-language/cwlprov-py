@@ -1,0 +1,6 @@
+Bag-Software-Agent: cwltool 1.0.20180925133620
+BagIt-Profile-Identifier: https://w3id.org/ro/bagit/profile
+Bagging-Date: 2018-10-05
+External-Description: Research Object of CWL workflow run
+External-Identifier: arcp://uuid,3517857d-670b-4079-92f2-f7fb0d4f0292/
+Payload-Oxum: 7.2

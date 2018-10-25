@@ -1,0 +1,57 @@
+{
+    "dir1": {
+        "basename": "dir1",
+        "nameroot": "dir1",
+        "nameext": "",
+        "class": "Directory",
+        "@id": "urn:uuid:013b143b-c291-4563-92c4-fa89c13748e7",
+        "listing": [
+            {
+                "class": "File",
+                "location": "../data/86/86f7e437faa5a7fce15d1ddcb9eaeaea377667b8",
+                "basename": "a.txt",
+                "checksum": "sha1$86f7e437faa5a7fce15d1ddcb9eaeaea377667b8",
+                "@id": "urn:uuid:ab4708e0-ffda-48c9-a1c0-22b9af6fbf8f"
+            },
+            {
+                "class": "Directory",
+                "basename": "a",
+                "listing": [
+                    {
+                        "class": "File",
+                        "location": "../data/e9/e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98",
+                        "basename": "b.txt",
+                        "checksum": "sha1$e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98",
+                        "@id": "urn:uuid:a57d1a03-7b88-4dc7-a042-02c56e2d1203"
+                    },
+                    {
+                        "class": "Directory",
+                        "basename": "b",
+                        "listing": [
+                            {
+                                "class": "File",
+                                "location": "../data/84/84a516841ba77a5b4648de2cd0dfcb30ea46dbb4",
+                                "basename": "c.txt",
+                                "checksum": "sha1$84a516841ba77a5b4648de2cd0dfcb30ea46dbb4",
+                                "@id": "urn:uuid:b6e3feb2-d3b2-4a4d-96f7-b42e506a2e31"
+                            }
+                        ],
+                        "@id": "urn:uuid:29362b15-aec5-41da-997a-0fbda3de0f9d"
+                    }
+                ],
+                "@id": "urn:uuid:5bd08ebf-fe7b-4a73-9f0b-b90e6d82effa"
+            }
+        ]
+    },
+    "listing": {
+        "location": "../data/3c/3ca69e8d6c234a469d16ac28a4a658c92267c423",
+        "basename": "97c2d154cd3eb14c5554f6051e9c236c7fdb128a",
+        "nameroot": "97c2d154cd3eb14c5554f6051e9c236c7fdb128a",
+        "nameext": "",
+        "class": "File",
+        "checksum": "sha1$3ca69e8d6c234a469d16ac28a4a658c92267c423",
+        "size": 6,
+        "http://commonwl.org/cwltool#generation": 0,
+        "@id": "urn:uuid:0afd6460-f81b-4dc5-92c2-06b691c7a5e0"
+    }
+}

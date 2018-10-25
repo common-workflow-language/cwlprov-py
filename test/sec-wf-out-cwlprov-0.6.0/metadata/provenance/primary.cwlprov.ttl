@@ -1,0 +1,160 @@
+@prefix cwlprov: <https://w3id.org/cwl/prov#> .
+@prefix data: <urn:hash::sha1:> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix id: <urn:uuid:> .
+@prefix input: <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/primary-job.json#> .
+@prefix metadata: <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/metadata/> .
+@prefix orcid: <https://orcid.org/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix provenance: <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/metadata/provenance/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix researchobject: <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/> .
+@prefix schema: <http://schema.org/> .
+@prefix sha256: <nih:sha-256;> .
+@prefix wf: <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#> .
+@prefix wf4ever: <http://purl.org/wf4ever/wf4ever#> .
+@prefix wfdesc: <http://purl.org/wf4ever/wfdesc#> .
+@prefix wfprov: <http://purl.org/wf4ever/wfprov#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:uuid:0c4d6ac2-391d-46dc-9b97-cae7a0534d08> a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedDerivation [ a prov:Derivation,
+                cwlprov:SecondaryFile ;
+            prov:entity id:fdf8d28c-2c50-4611-84d2-d36e32efabab ] ;
+    prov:specializationOf data:a3db5c13ff90a36963278c6a39e4ee3c22e2a436 ;
+    cwlprov:basename "f.txt.size"^^xsd:string ;
+    cwlprov:nameext ".size"^^xsd:string ;
+    cwlprov:nameroot "f.txt"^^xsd:string .
+
+<urn:uuid:70a74f80-9f0e-487f-9aff-370aab57ce76> a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedDerivation [ a prov:Derivation,
+                cwlprov:SecondaryFile ;
+            prov:entity id:fdf8d28c-2c50-4611-84d2-d36e32efabab ] ;
+    prov:specializationOf <urn:hash::sha1:0f8ae3519acea73e158af005549dc58e8eb5d0df> ;
+    cwlprov:basename "f.csv"^^xsd:string ;
+    cwlprov:nameext ".csv"^^xsd:string ;
+    cwlprov:nameroot "f"^^xsd:string .
+
+id:cc6690f9-1a91-4614-91c3-55b55ece8f89 a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedDerivation [ a prov:Derivation,
+                cwlprov:SecondaryFile ;
+            prov:entity <urn:uuid:43ef574f-9c45-4d3a-bc8c-c02aab7986ac> ] ;
+    prov:specializationOf <urn:hash::sha1:593706831ae6760bd8b9a98b9204880a72f808c6> ;
+    cwlprov:basename "f.csv.columns"^^xsd:string ;
+    cwlprov:nameext ".columns"^^xsd:string ;
+    cwlprov:nameroot "f.csv"^^xsd:string .
+
+id:eb7de3b5-fc9a-4774-9f53-406f0cbc3e3a a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedDerivation [ a prov:Derivation,
+                cwlprov:SecondaryFile ;
+            prov:entity id:fdf8d28c-2c50-4611-84d2-d36e32efabab ] ;
+    prov:specializationOf <urn:hash::sha1:3f786850e387550fdab836ed7e6dc881de23001b> ;
+    cwlprov:basename "f.txt.firstletter"^^xsd:string ;
+    cwlprov:nameext ".firstletter"^^xsd:string ;
+    cwlprov:nameroot "f.txt"^^xsd:string .
+
+wf:main a wfdesc:Workflow,
+        prov:Entity,
+        prov:Plan ;
+    rdfs:label "Prospective provenance"^^xsd:string ;
+    wfdesc:hasSubProcess <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/step1> .
+
+<https://orcid.org/0000-0001-9842-9718> a schema:Person,
+        prov:Agent,
+        prov:Person .
+
+<urn:hash::sha1:03cfd743661f07975fa2f1220c5194cbaff48451> a wfprov:Artifact,
+        prov:Entity .
+
+<urn:hash::sha1:3f786850e387550fdab836ed7e6dc881de23001b> a wfprov:Artifact,
+        prov:Entity .
+
+<urn:hash::sha1:593706831ae6760bd8b9a98b9204880a72f808c6> a wfprov:Artifact,
+        prov:Entity .
+
+data:a3db5c13ff90a36963278c6a39e4ee3c22e2a436 a wfprov:Artifact,
+        prov:Entity .
+
+<urn:uuid:43ef574f-9c45-4d3a-bc8c-c02aab7986ac> a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedGeneration [ a prov:Generation ;
+            prov:activity <urn:uuid:4171ad98-1953-422c-97c8-9830198a7813> ;
+            prov:atTime "2018-10-05T08:52:38.019271"^^xsd:dateTime ;
+            prov:hadRole <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/step1/file1csv> ] ;
+    prov:specializationOf <urn:hash::sha1:0f8ae3519acea73e158af005549dc58e8eb5d0df> ;
+    cwlprov:basename "f.csv"^^xsd:string ;
+    cwlprov:nameext ".csv"^^xsd:string ;
+    cwlprov:nameroot "f"^^xsd:string .
+
+<urn:uuid:727707d9-7c5d-41a4-a764-b1ae6c95302c> a prov:Agent ;
+    prov:actedOnBehalfOf <https://orcid.org/0000-0001-9842-9718> .
+
+<arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/step1> a wfdesc:Process,
+        prov:Entity,
+        prov:Plan .
+
+<urn:hash::sha1:0f8ae3519acea73e158af005549dc58e8eb5d0df> a wfprov:Artifact,
+        prov:Entity .
+
+<urn:uuid:4171ad98-1953-422c-97c8-9830198a7813> a wfprov:ProcessRun,
+        prov:Activity ;
+    rdfs:label "Run of workflow/packed.cwl#main/step1"^^xsd:string ;
+    prov:qualifiedAssociation [ a prov:Association ;
+            prov:hadPlan <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/step1> ] ;
+    prov:qualifiedEnd [ a prov:End ;
+            prov:atTime "2018-10-05T08:52:38.023362"^^xsd:dateTime ;
+            prov:hadActivity id:b8071e5c-0b81-4b8c-b8b5-261df960e4d7 ] ;
+    prov:qualifiedStart [ a prov:Start ;
+            prov:atTime "2018-10-05T08:52:38.010242"^^xsd:dateTime ;
+            prov:hadActivity id:b8071e5c-0b81-4b8c-b8b5-261df960e4d7 ] ;
+    prov:wasAssociatedWith id:dc72a23f-f447-4a0b-bfff-ddab3dc669e7 .
+
+id:b8071e5c-0b81-4b8c-b8b5-261df960e4d7 a wfprov:WorkflowRun,
+        prov:Activity ;
+    rdfs:label "Run of workflow/packed.cwl#main"^^xsd:string ;
+    prov:qualifiedAssociation [ a prov:Association ;
+            prov:hadPlan wf:main ] ;
+    prov:qualifiedEnd [ a prov:End ;
+            prov:atTime "2018-10-05T08:52:38.027210"^^xsd:dateTime ;
+            prov:hadActivity id:dc72a23f-f447-4a0b-bfff-ddab3dc669e7 ] ;
+    prov:qualifiedStart [ a prov:Start ;
+            prov:atTime "2018-10-05T08:52:37.988686"^^xsd:dateTime ;
+            prov:hadActivity id:dc72a23f-f447-4a0b-bfff-ddab3dc669e7 ] ;
+    prov:startedAtTime "2018-10-05T08:52:37.988568"^^xsd:dateTime ;
+    prov:wasAssociatedWith id:dc72a23f-f447-4a0b-bfff-ddab3dc669e7 .
+
+id:fdf8d28c-2c50-4611-84d2-d36e32efabab a wf4ever:File,
+        wfprov:Artifact,
+        prov:Entity ;
+    prov:qualifiedGeneration [ a prov:Generation ;
+            prov:activity <urn:uuid:4171ad98-1953-422c-97c8-9830198a7813> ;
+            prov:atTime "2018-10-05T08:52:38.019271"^^xsd:dateTime ;
+            prov:hadRole <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/step1/file1> ],
+        [ a prov:Generation ;
+            prov:activity id:b8071e5c-0b81-4b8c-b8b5-261df960e4d7 ;
+            prov:atTime "2018-10-05T08:52:38.027102"^^xsd:dateTime ;
+            prov:hadRole <arcp://uuid,b8071e5c-0b81-4b8c-b8b5-261df960e4d7/workflow/packed.cwl#main/primary/file1> ] ;
+    prov:specializationOf <urn:hash::sha1:03cfd743661f07975fa2f1220c5194cbaff48451> ;
+    cwlprov:basename "f.txt"^^xsd:string ;
+    cwlprov:nameext ".txt"^^xsd:string ;
+    cwlprov:nameroot "f"^^xsd:string .
+
+id:dc72a23f-f447-4a0b-bfff-ddab3dc669e7 a wfprov:WorkflowEngine,
+        prov:Agent,
+        prov:SoftwareAgent ;
+    rdfs:label "cwltool 1.0.20180925133620"^^xsd:string ;
+    prov:qualifiedStart [ a prov:Start ;
+            prov:atTime "2018-10-05T08:52:37.988517"^^xsd:dateTime ;
+            prov:hadActivity <urn:uuid:727707d9-7c5d-41a4-a764-b1ae6c95302c> ] .
+

@@ -1,0 +1,22 @@
+[2018-10-05T07:58:16,096Z] [cwltool] /home/stain/src/cwltool/venv3/lib/python3.6/site-packages/pytest.py --no-container --provenance /tmp/tmp67h6r4elro /home/stain/src/cwltool/tests/wf/directory.cwl --dir /tmp/tmpbyrh7nsutest_directory_workflow/dir2
+[2018-10-05T07:58:16,096Z] Resolved '/home/stain/src/cwltool/tests/wf/directory.cwl' to 'file:///home/stain/src/cwltool/tests/wf/directory.cwl'
+[2018-10-05T07:58:17,269Z] [provenance] Adding to RO file:///tmp/tmpbyrh7nsutest_directory_workflow/dir2/c
+[2018-10-05T07:58:17,269Z] [provenance] Adding to RO file:///tmp/tmpbyrh7nsutest_directory_workflow/dir2/a
+[2018-10-05T07:58:17,270Z] [provenance] Adding to RO file:///tmp/tmpbyrh7nsutest_directory_workflow/dir2/b
+[2018-10-05T07:58:17,285Z] [workflow ] start
+[2018-10-05T07:58:17,285Z] [workflow ] starting step ls
+[2018-10-05T07:58:17,286Z] [step ls] start
+[2018-10-05T07:58:17,291Z] [job ls] /tmp/tmpvnvyzk5r$ ls \
+    /tmp/tmpiycljc32/stg37c1c8cc-520f-4d40-893f-5bad5c68995a/dir2 > /tmp/tmpvnvyzk5r/97c2d154cd3eb14c5554f6051e9c236c7fdb128a
+[2018-10-05T07:58:17,309Z] [job ls] completed success
+[2018-10-05T07:58:17,309Z] [step ls] completed success
+[2018-10-05T07:58:17,309Z] [workflow ] starting step generate
+[2018-10-05T07:58:17,309Z] [step generate] start
+[2018-10-05T07:58:17,312Z] [job generate] /tmp/tmp_nlt0zd1$ /bin/sh \
+    -c \
+    pwd; mkdir -p dir1/a/b; echo -n a > dir1/a.txt; echo -n b > dir1/a/b.txt; echo -n c > dir1/a/b/c.txt;
+
+[2018-10-05T07:58:17,340Z] [job generate] completed success
+[2018-10-05T07:58:17,340Z] [step generate] completed success
+[2018-10-05T07:58:17,341Z] [workflow ] completed success
+[2018-10-05T07:58:17,592Z] Final process status is success

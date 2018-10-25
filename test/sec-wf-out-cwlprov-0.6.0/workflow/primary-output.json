@@ -1,0 +1,48 @@
+{
+    "file1": {
+        "location": "../data/03/03cfd743661f07975fa2f1220c5194cbaff48451",
+        "basename": "f.txt",
+        "nameroot": "f",
+        "nameext": ".txt",
+        "class": "File",
+        "checksum": "sha1$03cfd743661f07975fa2f1220c5194cbaff48451",
+        "size": 4,
+        "secondaryFiles": [
+            {
+                "basename": "f.txt.size",
+                "location": "../data/a3/a3db5c13ff90a36963278c6a39e4ee3c22e2a436",
+                "class": "File",
+                "nameroot": "f.txt",
+                "nameext": ".size",
+                "checksum": "sha1$a3db5c13ff90a36963278c6a39e4ee3c22e2a436",
+                "size": 2,
+                "http://commonwl.org/cwltool#generation": 0,
+                "@id": "urn:uuid:0c4d6ac2-391d-46dc-9b97-cae7a0534d08"
+            },
+            {
+                "basename": "f.txt.firstletter",
+                "location": "../data/3f/3f786850e387550fdab836ed7e6dc881de23001b",
+                "class": "File",
+                "nameroot": "f.txt",
+                "nameext": ".firstletter",
+                "checksum": "sha1$3f786850e387550fdab836ed7e6dc881de23001b",
+                "size": 2,
+                "http://commonwl.org/cwltool#generation": 0,
+                "@id": "urn:uuid:eb7de3b5-fc9a-4774-9f53-406f0cbc3e3a"
+            },
+            {
+                "basename": "f.csv",
+                "location": "../data/0f/0f8ae3519acea73e158af005549dc58e8eb5d0df",
+                "class": "File",
+                "nameroot": "f",
+                "nameext": ".csv",
+                "checksum": "sha1$0f8ae3519acea73e158af005549dc58e8eb5d0df",
+                "size": 6,
+                "http://commonwl.org/cwltool#generation": 0,
+                "@id": "urn:uuid:70a74f80-9f0e-487f-9aff-370aab57ce76"
+            }
+        ],
+        "http://commonwl.org/cwltool#generation": 0,
+        "@id": "urn:uuid:fdf8d28c-2c50-4611-84d2-d36e32efabab"
+    }
+}

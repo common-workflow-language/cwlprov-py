@@ -1,0 +1,12 @@
+[2018-10-05T07:51:37,669Z] [cwltool] /home/stain/src/cwlprov-py/venv/bin/cwltool --provenance sec-wf sec-wf.cwl --file1=blah
+[2018-10-05T07:51:37,669Z] Resolved 'sec-wf.cwl' to 'file:///home/stain/src/cwltool/tests/wf/sec-wf.cwl'
+[2018-10-05T07:51:39,076Z] [provenance] Adding to RO file:///home/stain/src/cwltool/tests/wf/blah
+[2018-10-05T07:51:39,076Z] [provenance] Adding to RO file:///home/stain/src/cwltool/tests/wf/blah.idx
+[2018-10-05T07:51:39,079Z] [workflow ] start
+[2018-10-05T07:51:39,079Z] [workflow ] starting step step1
+[2018-10-05T07:51:39,079Z] [step step1] start
+[2018-10-05T07:51:39,082Z] [job step1] /tmp/tmpegdfi6j7$ true
+[2018-10-05T07:51:39,090Z] [job step1] completed success
+[2018-10-05T07:51:39,091Z] [step step1] completed success
+[2018-10-05T07:51:39,091Z] [workflow ] completed success
+[2018-10-05T07:51:39,187Z] Final process status is success

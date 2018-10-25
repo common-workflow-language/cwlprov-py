@@ -1,0 +1,29 @@
+@prefix id: <urn:uuid:> .
+@prefix ore: <http://www.openarchives.org/ore/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ro: <http://purl.org/wf4ever/ro#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:uuid:0f87487b-b9a5-42e5-a00a-082306212739> a ro:FolderEntry,
+        ore:Proxy,
+        prov:Entity ;
+    ro:entryName "a"^^xsd:string ;
+    ore:proxyFor <urn:uuid:5bd08ebf-fe7b-4a73-9f0b-b90e6d82effa> ;
+    ore:proxyIn <urn:uuid:013b143b-c291-4563-92c4-fa89c13748e7> .
+
+<urn:uuid:7c2c1107-78ee-4610-a169-ad84bcb022f4> a ro:FolderEntry,
+        ore:Proxy,
+        prov:Entity ;
+    ro:entryName "a.txt"^^xsd:string ;
+    ore:proxyFor id:ab4708e0-ffda-48c9-a1c0-22b9af6fbf8f ;
+    ore:proxyIn <urn:uuid:013b143b-c291-4563-92c4-fa89c13748e7> .
+
+<urn:uuid:013b143b-c291-4563-92c4-fa89c13748e7> a ro:Folder,
+        ore:Aggregation,
+        prov:Entity ;
+    ore:aggregates <urn:uuid:0f87487b-b9a5-42e5-a00a-082306212739>,
+        <urn:uuid:7c2c1107-78ee-4610-a169-ad84bcb022f4> .
+
