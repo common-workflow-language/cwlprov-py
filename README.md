@@ -191,7 +191,7 @@ Note that a warning will be printed if an unknown CWLProv version is detected:
     https://w3id.org/cwl/prov/0.4.0
     https://w3id.org/cwl/prov/0.3.0
 
-This typically means that cwlprov-py is outdated, although that is normally harmless. Try `pip install cwlprov` to upgrade.
+This typically means that cwlprov-py is outdated, although that is normally harmless. Try `pip install --upgrade cwlprov` 
 
 The `cwlprov who` command will try to determine the user that ran the workflow.
 
