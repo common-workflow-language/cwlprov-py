@@ -246,11 +246,22 @@ Nested workflows, steps that themselves are workflows, are indicated in `cwlprov
     [ Workflow start
     ] Workflow end
 
-To explore the nested workflow run with other commands, provide the run UUID with `--run` argument, e.g. 
+_Note that there is a bug in CWLProv 0.3.0 logging shown above; steps of nested workflows are misleadingly labeled under `#main`_
+
+You can list all workflow runs (including nested workflow runs) with `cwlprov runs`:
+
+    test/nested-cwlprov-0.3.0$ cwlprov runs
+    39408a40-c1c8-4852-9747-87249425be1e * Run of workflow/packed.cwl#main
+    0cceeaf6-4109-4f08-940b-f06ac959944a   Run of workflow/packed.cwl#main
+    Legend:
+    * master workflow
+
+To explore the nested workflow run with other commands you may have to provide the run UUID with `--run` argument, e.g. 
 
     test/nested-cwlprov-0.3.0$ cwlprov outputs --format=files --run 0cceeaf6-4109-4f08-940b-f06ac959944a 83752ab4-8227-4d4a-8baa-78376df34aed
     Output example_out:
     data/93/93035905e94e150874f5a881d39f3c5c6378dd38
+
 
 
 ## License
