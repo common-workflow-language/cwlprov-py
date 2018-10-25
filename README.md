@@ -1,5 +1,29 @@
 # CWLProv Python tool
 
+The `cwlprov` Python tool is a command line interface to validate and inspect 
+[CWLProv](https://w3id.org/cwl/prov) Research Objects that capture workflow runs,
+typically executed in a [Common Workflow Language](https://www.commonwl.org/)
+implementation.
+
+## Installation
+
+You'll need [Python 3](https://www.python.org/downloads/).
+
+To install from [pip](https://pypi.org/project/cwlprov/) try:
+
+    pip3 install cwlprov
+
+If you would rather install from the checkout of this source code:
+
+    pip3 install .
+
+## Usage
+
+Use `cwlprov --help`  to see all options. For instance `cwlprov validate` will validate the folder is valid according to CWLProv.
+
+The [test/](test/) folder contains some examples of workflow runs for different CWLProv profiles.
+
+
 ## License
 
 This repository is distributed under [Apache License, version 2.0](https://www.apache.org/licenses/LICENSE-2.0) 
@@ -10,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Contributing
 
-cwlprov.py is maintained at https://github.com/common-workflow-language/cwlprov-py/
+cwlprov.py is maintained at https://github.com/common-workflow-language/cwlprov-py/ by the [Common Workflow Language](https://www.commonwl.org/) project.
 
 Feel free to raise an
 [issue](https://github.com/common-workflow-language/cwlprov-py/issues) or a
@@ -38,7 +62,4 @@ at the discretion of the leadership team.
 
 For more details, see our 
 [Code of Conduct](https://github.com/common-workflow-language/common-workflow-language/blob/master/CODE_OF_CONDUCT.md).
-
-Please note that cwlprov-py is for the CWLProv RO analytics which is generated as a result
-of a CWL workflow run. 
 
