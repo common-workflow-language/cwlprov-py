@@ -1,13 +1,12 @@
 # CWLProv Python tool
 
-
-
 ## License
 
-This repository is distributed under [Apache License, version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+This repository is distributed under [Apache License, version 2.0](https://www.apache.org/licenses/LICENSE-2.0) 
 
 See the file [LICENSE.txt](LICENSE.txt) for details, and [NOTICE](NOTICE) for required notices.
 
+SPDX-License-Identifier: Apache-2.0
 
 ## Contributing
 
