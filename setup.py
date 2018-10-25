@@ -26,12 +26,9 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-#with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-#  long_description = f.read()
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+  long_description = f.read()
 
-long_description = """
-cwlprov API for Python
-"""
 import cwlprov
 
 setup(
@@ -40,6 +37,7 @@ setup(
   version = cwlprov.__version__,
   description = 'cwlprov API for Python',
   long_description=long_description,
+  long_description_content_type="text/markdown",
   author = 'Stian Soiland-Reyes',
   author_email = 'stain@apache.org',
   include_package_data=True,
