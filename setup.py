@@ -32,48 +32,43 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 import cwlprov
 
 setup(
-  name = 'cwlprov',
-  packages = find_packages(exclude=['contrib', 'docs', 'tests']), # Required
-  version = cwlprov.__version__,
-  description = 'cwlprov API for Python',
-  long_description=long_description,
-  long_description_content_type="text/markdown",
-  author = 'Stian Soiland-Reyes',
-  author_email = 'stain@apache.org',
-  include_package_data=True,
-  # https://www.apache.org/licenses/LICENSE-2.0
-  license = "Apache License, Version 2.0",
-  url = 'https://github.com/common-workflow-language/cwlprov-py',
-#  download_url = 'https://github.com/stain/arcp-py/archive/0.1.0.tar.gz',
-  keywords = "cwl prov cwlprov provenance",
-  
-  install_requires=[
-          'prov >= 1.5.1',
-          'bdbag >= 1.4.1',
-          #'bagit >= 1.6.4', # Transitive from bdbag
-          'arcp >= 0.2.0',
-          'rdflib-jsonld >= 0.4.0',
-          'rdflib >= 4.2.2',        
-  ],
-  tests_require=['pytest'],
-  entry_points={
-      'console_scripts': ["cwlprov=cwlprov.tool:main"]
-  },
-  python_requires='>=3.6, <4',
-  classifiers=[
-    # https://pypi.python.org/pypi?%3Aaction=list_classifiers
-    'Development Status :: 2 - Pre-Alpha',
-
-    'Intended Audience :: Developers',
-    'Topic :: Software Development :: Build Tools',
-     # 'License :: OSI Approved :: Apache Software License',
-     # https://github.com/pypa/pypi-legacy/issues/564
-    #'License :: OSI Approved',
-    # 'License :: OSI Approved :: Apache License, Version 2.0 (Apache-2.0)',  
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
-    'Topic :: Internet',
-    'Topic :: System :: Archiving :: Packaging',
-],
-  
+    name="cwlprov",
+    packages=find_packages(exclude=["contrib", "docs", "tests"]),  # Required
+    version=cwlprov.__version__,
+    description="cwlprov API for Python",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author="Stian Soiland-Reyes",
+    author_email="stain@apache.org",
+    include_package_data=True,
+    # https://www.apache.org/licenses/LICENSE-2.0
+    license="Apache License, Version 2.0",
+    url="https://github.com/common-workflow-language/cwlprov-py",
+    #  download_url = 'https://github.com/stain/arcp-py/archive/0.1.0.tar.gz',
+    keywords="cwl prov cwlprov provenance",
+    install_requires=[
+        "prov >= 1.5.1",
+        "bdbag >= 1.4.1",
+        #'bagit >= 1.6.4', # Transitive from bdbag
+        "arcp >= 0.2.0",
+        "rdflib-jsonld >= 0.4.0, < 0.6.2",
+        "rdflib >= 4.2.2, <6.0",
+    ],
+    tests_require=["pytest"],
+    entry_points={"console_scripts": ["cwlprov=cwlprov.tool:main"]},
+    python_requires=">=3.6, <4",
+    classifiers=[
+        # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        "Development Status :: 2 - Pre-Alpha",
+        "Intended Audience :: Developers",
+        "Topic :: Software Development :: Build Tools",
+        # 'License :: OSI Approved :: Apache Software License',
+        # https://github.com/pypa/pypi-legacy/issues/564
+        #'License :: OSI Approved',
+        # 'License :: OSI Approved :: Apache License, Version 2.0 (Apache-2.0)',
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Topic :: Internet",
+        "Topic :: System :: Archiving :: Packaging",
+    ],
 )
