@@ -54,7 +54,7 @@ setup(
         "bdbag >= 1.4.1",
         #'bagit >= 1.6.4', # Transitive from bdbag
         "arcp >= 0.2.0",
-        "rdflib-jsonld >= 0.4.0, < 0.6.2",
+        "rdflib-jsonld >= 0.4.0, < 0.6.3",
         "rdflib >= 4.2.2, <6.0",
     ],
     tests_require=["pytest"],
