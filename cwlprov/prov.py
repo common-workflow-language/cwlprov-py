@@ -19,13 +19,17 @@
 cwlprov Provenance
 
 """
-__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
-__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
-__license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+__author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
+__license__ = (
+    "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+)
 
 import logging
+
 from prov.identifier import Identifier, Namespace
 from prov.model import *
+
 from .utils import *
 
 CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
@@ -34,14 +38,15 @@ _logger = logging.getLogger(__name__)
 
 MEDIA_TYPES = {
     "ttl": 'text/turtle; charset="UTF-8"',
-    "rdf": 'application/rdf+xml',
-    "json": 'application/json',
-    "jsonld": 'application/ld+json',
-    "xml": 'application/xml',
+    "rdf": "application/rdf+xml",
+    "json": "application/json",
+    "jsonld": "application/ld+json",
+    "xml": "application/xml",
     "provn": 'text/provenance-notation; charset="UTF-8"',
-    "nt": 'application/n-triples',
+    "nt": "application/n-triples",
 }
-EXTENSIONS = dict((v,k) for (k,v) in MEDIA_TYPES.items())
+EXTENSIONS = {v: k for (k, v) in MEDIA_TYPES.items()}
+
 
 def _as_identifier(uri_or_identifier):
     if not uri_or_identifier:
@@ -51,8 +56,10 @@ def _as_identifier(uri_or_identifier):
     else:
         return Identifier(str(uri_or_identifier))
 
+
 def _prov_attr(attr, elem):
     return first(elem.get_attribute(attr))
+
 
 class Provenance:
     def __init__(self, ro, run=None):
@@ -64,8 +71,7 @@ class Provenance:
             raise OSError("No provenance found for %s" % self.run_id)
 
     def __repr__(self):
-        return "Provenance<%s from %s>" % (self.uri, self._path)
-
+        return f"Provenance<{self.uri} from {self._path}>"
 
     @property
     def uri(self):
@@ -89,7 +95,7 @@ class Provenance:
         return Activity(self, activity)
 
     def _prov_format(self, media_type):
-        for prov in (self.ro.provenance(self.uri) or ()):
+        for prov in self.ro.provenance(self.uri) or ():
             if media_type == self.ro.mediatype(prov):
                 return self.ro.resolve_path(prov)
 
@@ -103,7 +109,9 @@ class Provenance:
             if prov:
                 _logger.info("Loading %s", prov)
                 if c in rdf_candidates:
-                    doc = ProvDocument.deserialize(source=prov, format="rdf", rdf_format=c)
+                    doc = ProvDocument.deserialize(
+                        source=prov, format="rdf", rdf_format=c
+                    )
                 else:
                     doc = ProvDocument.deserialize(source=prov, format=c)
                 return doc.unified(), prov
@@ -114,7 +122,7 @@ class Provenance:
         for elem in self.prov_doc.get_records(prov_type):
             if (with_attrib, attrib_value) in elem.attributes:
                 yield elem
-    
+
 
 class _Prov:
     def __init__(self, provenance, record):
@@ -145,10 +153,10 @@ class _Prov:
     def uri(self):
         i = self.id
         return i and i.uri
-    
+
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.uri)
-    
+        return f"<{self.__class__.__name__} {self.uri}>"
+
     def __str__(self):
         return self.record.get_provn()
 
@@ -160,7 +168,6 @@ class _Prov:
 
 
 class Activity(_Prov):
-
     def usage(self):
         return self._records(ProvUsage, Usage, PROV_ATTR_ACTIVITY)
 
@@ -172,7 +179,7 @@ class Activity(_Prov):
 
     def plan(self):
         return first(a.plan_id for a in self.association() if a.plan_id)
-    
+
     def steps(self):
         starts = self._records(ProvStart, Start, PROV_ATTR_STARTER)
         for s in starts:
@@ -192,17 +199,20 @@ class Activity(_Prov):
         s = start and start.time
         end = self.end()
         e = end and end.time
-        return s and e and e-s
+        return s and e and e - s
+
 
 class _Time(_Prov):
     @property
     def time(self):
         return self._prov_attr(PROV_ATTR_TIME)
 
+
 class _Start_or_End(_Time):
     @property
     def activity_id(self):
         return self._prov_attr(PROV_ATTR_ACTIVITY)
+
     def activity(self):
         a = self.activity_id
         return a and self.provenance.activity(a)
@@ -210,15 +220,19 @@ class _Start_or_End(_Time):
     @property
     def starter_id(self):
         return self._prov_attr(PROV_ATTR_STARTER)
+
     def starter_activity(self):
         a = self.starter_id
         return a and self.provenance.activity(a)
-    
+
 
 class Start(_Start_or_End):
     pass
+
+
 class End(_Start_or_End):
     pass
+
 
 class Association(_Prov):
     @property
@@ -237,6 +251,7 @@ class Association(_Prov):
     def plan_id(self):
         return self._prov_attr(PROV_ATTR_PLAN)
 
+
 class Specialization(_Prov):
     @property
     def general_entity_id(self):
@@ -254,14 +269,18 @@ class Specialization(_Prov):
         s = self.specific_entity_id
         return s and self.provenance.entity(s)
 
-class Entity(_Prov):
 
+class Entity(_Prov):
     def specializationOf(self):
-        specializations = self._records(ProvSpecialization, Specialization, PROV_ATTR_SPECIFIC_ENTITY)
+        specializations = self._records(
+            ProvSpecialization, Specialization, PROV_ATTR_SPECIFIC_ENTITY
+        )
         return (s.general_entity() for s in specializations)
 
     def generalizationOf(self):
-        specializations = self._records(ProvSpecialization, Specialization, PROV_ATTR_GENERAL_ENTITY)
+        specializations = self._records(
+            ProvSpecialization, Specialization, PROV_ATTR_GENERAL_ENTITY
+        )
         return (s.specific_entity() for s in specializations)
 
     @property
@@ -271,9 +290,11 @@ class Entity(_Prov):
     @property
     def basename(self):
         return self._prov_attr(CWLPROV["basename"])
+
     @property
     def nameroot(self):
         return self._prov_attr(CWLPROV["nameroot"])
+
     @property
     def nameext(self):
         return self._prov_attr(CWLPROV["nameext"])
@@ -282,8 +303,12 @@ class Entity(_Prov):
         return self._records(ProvDerivation, Derivation, PROV_ATTR_USED_ENTITY)
 
     def secondary_files(self):
-        return [d.generated_entity() for d in self.derivations() 
-                if CWLPROV["SecondaryFile"] in d.types()]
+        return [
+            d.generated_entity()
+            for d in self.derivations()
+            if CWLPROV["SecondaryFile"] in d.types()
+        ]
+
 
 class Derivation(_Prov):
     @property
@@ -305,12 +330,13 @@ class Derivation(_Prov):
     @property
     def generation_id(self):
         return self._prov_attr(PROV_ATTR_GENERATION)
+
     @property
     def usage_id(self):
         return self._prov_attr(PROV_ATTR_USAGE)
 
-class _Usage_Or_Generation(_Time):
 
+class _Usage_Or_Generation(_Time):
     @property
     def entity_id(self):
         return self._prov_attr(PROV_ATTR_ENTITY)
@@ -322,11 +348,11 @@ class _Usage_Or_Generation(_Time):
     @property
     def role(self):
         return self._prov_attr(PROV_ROLE)
-    
+
+
 class Generation(_Usage_Or_Generation):
     pass
 
+
 class Usage(_Usage_Or_Generation):
     pass
-
-

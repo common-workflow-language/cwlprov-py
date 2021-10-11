@@ -18,21 +18,27 @@
 """
 cwlprov Command Line internal utility functions
 """
-__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
-__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
-__license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+__author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
+__license__ = (
+    "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+)
 
 from functools import partial
+
 
 def first(iterable):
     return next(iter(iterable), None)
 
+
 def many(s):
     return ", ".join(map(str, s))
 
+
 ANY_VALUE = object()
 
-def find_dict_with_item(json, val=ANY_VALUE, key="id"):    
+
+def find_dict_with_item(json, val=ANY_VALUE, key="id"):
     if hasattr(json, "get"):
         if json.get(key, ANY_VALUE) == val:
             return json
@@ -41,12 +47,13 @@ def find_dict_with_item(json, val=ANY_VALUE, key="id"):
     if hasattr(json, "values"):
         return find_dict_with_item(json.values(), val, key)
     elif hasattr(json, "__iter__") and not isinstance(json, str):
-        return first(filter(None, map(
-            partial(find_dict_with_item, key=key, val=val),
-            json)))
+        return first(
+            filter(None, map(partial(find_dict_with_item, key=key, val=val), json))
+        )
     else:
         # Can't iterate further, look elsewhere
         return None
+
 
 def average(it):
     l = list(it)

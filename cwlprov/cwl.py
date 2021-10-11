@@ -17,16 +17,18 @@
 """
 cwlprov Crude CWL parsing
 """
-__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
-__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
-__license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+__author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
+__license__ = (
+    "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+)
+
 
 class CWL:
     def __init__(self, ro):
         self.ro = ro
         self.cwl = self._load_packed()
-    
+
     def _load_packed(self):
         # TODO
         pass
-        
