@@ -50,7 +50,7 @@ install-dependencies: FORCE
 	pip install --upgrade $(DEVPKGS)
 	pip install -r requirements.txt
 
-## install     : install the ${MODULE} module and schema-salad-tool
+## install     : install the ${MODULE} module and cwlprov
 install: FORCE
 	pip install .
 
@@ -113,7 +113,7 @@ pylint_report.txt: $(PYSOURCES)
 diff_pylint_report: pylint_report.txt
 	diff-quality --violations=pylint pylint_report.txt
 
-.coverage:
+.coverage: FORCE
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) validate && ) true
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) info && ) true
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) who && ) true
@@ -174,7 +174,7 @@ mypy3: mypy
 mypy: $(filter-out setup.py,$(PYSOURCES))
 	mypy $^
 
-pyupgrade: $(filter-out schema_salad/metaschema.py,$(PYSOURCES))
+pyupgrade: $(PYSOURCES)
 	pyupgrade --exit-zero-even-if-changed --py36-plus $^
 
 release-test: FORCE
