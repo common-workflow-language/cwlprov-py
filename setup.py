@@ -16,18 +16,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
-__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
-__license__     = "Apache License, version 2.0 <https://www.apache.org/licenses/LICENSE-2.0>"
+__author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
+__license__ = (
+    "Apache License, version 2.0 <https://www.apache.org/licenses/LICENSE-2.0>"
+)
 
-from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
+from setuptools import find_packages, setup
+
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-  long_description = f.read()
+with open(path.join(here, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
 import cwlprov
 

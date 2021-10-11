@@ -19,25 +19,26 @@
 cwlprov Research Object
 
 """
-__author__      = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
-__copyright__   = "© 2018 Software Freedom Conservancy (SFC)"
-__license__     = "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+__author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
+__copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
+__license__ = (
+    "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
+)
 
-import arcp
-import json
 import logging
 import pathlib
-import pkg_resources
 import urllib.parse
-
 from functools import partial
-from rdflib import Namespace, URIRef, Graph, Literal, BNode
-from rdflib.namespace import RDF,RDFS,SKOS,DCTERMS,FOAF,XSD,DC,OWL
 
+import arcp
+import pkg_resources
+from rdflib import BNode, Graph, Namespace, URIRef
+from rdflib.namespace import DC, DCTERMS, FOAF, OWL
 
 _logger = logging.getLogger(__name__)
 
-MANIFEST_PATH=pathlib.PurePosixPath("metadata/manifest.json")
+MANIFEST_PATH = pathlib.PurePosixPath("metadata/manifest.json")
+
 
 def _resource_as_path(path):
     filename = pkg_resources.resource_filename(__package__, path)
@@ -59,36 +60,37 @@ SCHEMA = Namespace("http://schema.org/")
 CWLPROV = Namespace("https://w3id.org/cwl/prov#")
 OA = Namespace("http://www.w3.org/ns/oa#")
 
+
 class ResearchObject:
     def __init__(self, bag):
         if not bag.normalized_filesystem_names:
             # Not populated? Validate
             bag.validate()
         self.bag = bag
-        self.root_path = pathlib.Path(bag.path).absolute()        
+        self.root_path = pathlib.Path(bag.path).absolute()
         self.root_uri = self._find_arcp()
         self._load_manifest()
-        
+
     def _find_arcp(self):
         ext_id = self.bag.info.get("External-Identifier")
         if ext_id and arcp.is_arcp_uri(ext_id):
             _logger.debug("External-Identifier defines bagit root: %s", ext_id)
             return ext_id
-        else:            
+        else:
             u = arcp.arcp_random()
             if ext_id:
                 _logger.warning("External-Identifier not an arcp URI", ext_id)
-            else: 
+            else:
                 _logger.warning("External-Identifier not found in bag-info.txt")
 
             _logger.info("Temporary bagit root: %s", u)
             return u
-    
-    @property 
+
+    @property
     def id(self):
         i = self.id_uriref
         if isinstance(i, BNode):
-           return next(self.manifest.objects(i, OWL.sameAs))
+            return next(self.manifest.objects(i, OWL.sameAs))
 
     @property
     def id_uriref(self):
@@ -107,7 +109,7 @@ class ResearchObject:
 
         _logger.info("Using root as fallback RO identifier: %s", self.root_uri)
         return URIRef(self.root_uri)
-    
+
     def resolve_uri(self, relative_uri):
         return urllib.parse.urljoin(self.root_uri, str(relative_uri))
 
@@ -118,7 +120,7 @@ class ResearchObject:
             assert urllib.parse.urljoin(uri_path, "/") == self.root_uri
             # Strip initial / so path is relative
             path = pathlib.PurePosixPath(uri.path[1:])
-        else:            
+        else:
             path = pathlib.PurePosixPath(uri_path)
         assert not path.is_absolute()
 
@@ -129,7 +131,7 @@ class ResearchObject:
         # ensure it did not climb out (will throw ValueError if not)
         assert absolute.relative_to(self.root_path)
         return absolute
-    
+
     def _load_manifest(self):
         manifest_file = self.resolve_path(MANIFEST_PATH)
         base_arcp = self.resolve_uri(MANIFEST_PATH)
@@ -147,7 +149,6 @@ class ResearchObject:
         self.manifest = g
         return g
 
-
     def _uriref(self, path=None, uri=None):
         if uri:
             return URIRef(uri)
@@ -160,7 +161,7 @@ class ResearchObject:
     def conformsTo(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
         return set(map(str, self.manifest.objects(resource, DCTERMS.conformsTo)))
-    
+
     @property
     def createdBy(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
@@ -184,8 +185,14 @@ class ResearchObject:
         return set(map(new_annotation, self.manifest.subjects(OA.hasBody, resource)))
 
     def describes(self, path=None, uri=None):
-        return next((a.hasTarget for a in self.annotations_with_content(path, uri)
-                   if a.motivatedBy == OA.describing), None)
+        return next(
+            (
+                a.hasTarget
+                for a in self.annotations_with_content(path, uri)
+                if a.motivatedBy == OA.describing
+            ),
+            None,
+        )
 
     def provenance(self, path=None, uri=None):
         prov = set()
@@ -195,7 +202,9 @@ class ResearchObject:
 
     def resources_with_provenance(self):
         new_annotation = partial(Annotation, self.manifest)
-        anns = map(new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance))
+        anns = map(
+            new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance)
+        )
         for a in anns:
             for t in a.hasTargets:
                 yield t
@@ -206,13 +215,16 @@ class ResearchObject:
 
     def bundledAs(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)
-        return next(map(str, self.manifest.objects(resource, BUNDLE["bundledAs"])), None)
+        return next(
+            map(str, self.manifest.objects(resource, BUNDLE["bundledAs"])), None
+        )
 
     @property
     def workflow_id(self):
         wf_id = self.describes(uri=self.id)
         _logger.debug("Primary Workflow run: %s", wf_id)
         return wf_id
+
 
 class Annotation:
     def __init__(self, graph, uri):
@@ -227,31 +239,32 @@ class Annotation:
     def hasBodies(self):
         return set(self._graph.objects(self._id, OA.hasBody))
 
-    @property    
+    @property
     def hasTarget(self):
         return next(self._graph.objects(self._id, OA.hasTarget), None)
 
-    @property    
+    @property
     def hasTargets(self):
         return set(self._graph.objects(self._id, OA.hasTarget))
 
-    @property    
+    @property
     def motivatedBy(self):
         return next(self._graph.objects(self._id, OA.motivatedBy), None)
 
     def __repr__(self):
         return "<Annotation %s>" % self._id
 
+
 class Agent:
     def __init__(self, graph, uri):
         self._graph = graph
         self._id = uri
-    
+
     @property
     def uri(self):
         if isinstance(self._id, URIRef):
             return self._id
-    
+
     @property
     def name(self):
         return next(self._graph.objects(self._id, FOAF.name), None)
@@ -263,7 +276,7 @@ class Agent:
     def __repr__(self):
         return "<Agent %s>" % self._id
 
-    def __str__(self):        
+    def __str__(self):
         s = self.name or "(unknown)"
         o = self.orcid
         if o:
