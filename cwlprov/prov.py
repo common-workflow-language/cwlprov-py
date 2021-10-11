@@ -45,7 +45,7 @@ MEDIA_TYPES = {
     "provn": 'text/provenance-notation; charset="UTF-8"',
     "nt": "application/n-triples",
 }
-EXTENSIONS = dict((v, k) for (k, v) in MEDIA_TYPES.items())
+EXTENSIONS = {v: k for (k, v) in MEDIA_TYPES.items()}
 
 
 def _as_identifier(uri_or_identifier):
@@ -71,7 +71,7 @@ class Provenance:
             raise OSError("No provenance found for %s" % self.run_id)
 
     def __repr__(self):
-        return "Provenance<%s from %s>" % (self.uri, self._path)
+        return f"Provenance<{self.uri} from {self._path}>"
 
     @property
     def uri(self):
@@ -155,7 +155,7 @@ class _Prov:
         return i and i.uri
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.uri)
+        return f"<{self.__class__.__name__} {self.uri}>"
 
     def __str__(self):
         return self.record.get_provn()

@@ -140,7 +140,7 @@ class ResearchObject:
         # so this test works offline
         context = _resource_as_path("context/bundle.jsonld").as_uri()
         g = Graph()
-        with open(manifest_file, "r", encoding="UTF-8") as f:
+        with open(manifest_file, encoding="UTF-8") as f:
             jsonld = f.read()
             # replace with file:/// URI
             jsonld = jsonld.replace("https://w3id.org/bundle/context", context)
@@ -206,8 +206,7 @@ class ResearchObject:
             new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance)
         )
         for a in anns:
-            for t in a.hasTargets:
-                yield t
+            yield from a.hasTargets
 
     def mediatype(self, path=None, uri=None):
         resource = self._uriref(path=path, uri=uri)

@@ -374,7 +374,7 @@ def _info_set(bag, key):
     if isinstance(v, list):
         return set(v)
     else:
-        return set([v])
+        return {v}
 
 
 def _simpler_uuid(uri):
@@ -410,7 +410,7 @@ MEDIA_TYPES = {
     "provn": 'text/provenance-notation; charset="UTF-8"',
     "nt": "application/n-triples",
 }
-EXTENSIONS = dict((v, k) for (k, v) in MEDIA_TYPES.items())
+EXTENSIONS = {v: k for (k, v) in MEDIA_TYPES.items()}
 
 
 def _prov_format(ro, uri, media_type):
@@ -694,9 +694,9 @@ class Tool:
         ro = self.ro
         args = self.args
         # If it has this prefix, it's probably OK
-        cwlprov = set(
+        cwlprov = {
             p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/")
-        )
+        }
         if not cwlprov:
             if full_validation or not args.quiet:
                 _logger.warning("Missing CWLProv profile: %s", ro.bag.path)
@@ -726,9 +726,9 @@ class Tool:
         if not args.quiet:
             self.print(ro.bag.info.get("External-Description", "Research Object"))
         self.print("Research Object ID: %s" % ro.id)
-        cwlprov = set(
+        cwlprov = {
             p for p in ro.conformsTo if p.startswith("https://w3id.org/cwl/prov/")
-        )
+        }
         if cwlprov:
             self.print("Profile: %s" % many(cwlprov))
         w = ro.workflow_id
@@ -835,7 +835,7 @@ class Tool:
                 if args.formats:
                     format = ro.mediatype(prov) or ""
                     format = EXTENSIONS.get(format, format)
-                    self.print("%s %s" % (format, (self._resource_path(prov))))
+                    self.print(f"{format} {(self._resource_path(prov))}")
                 else:
                     self.print("%s" % self._resource_path(prov))
         else:
@@ -1112,7 +1112,7 @@ class Tool:
                     return Status.UNKNOWN_RUN
                 label = first(activity.get_attribute("prov:label")) or ""
                 is_master = run == ro.workflow_id
-                self.print("%s %s %s" % (name, is_master and "*" or " ", label))
+                self.print("{} {} {}".format(name, is_master and "*" or " ", label))
             else:
                 self.print(name)
         if self.hints:
@@ -1166,7 +1166,7 @@ class Tool:
                     )
                     return Status.NOT_IMPLEMENTED
                 if run.startswith("#"):
-                    wf_arg = "%s%s" % (wf_file, run)
+                    wf_arg = f"{wf_file}{run}"
                     _logger.info("Tool %s", wf_arg)
                 else:
                     _logger.warning(
@@ -1262,7 +1262,7 @@ class Tool:
             time = _prov_attr(PROV_ATTR_TIME, u)
             if args.start and args.end:
                 # 2 col timestamps
-                time_part = "%s %s " % (
+                time_part = "{} {} ".format(
                     time or "(unknown usage time)     ",
                     TIME_PADDING,
                 )
@@ -1271,7 +1271,7 @@ class Tool:
                 time_part = "%s " % (time or "(unknown usage time)     ")
             else:
                 time_part = ""
-            self.print("%sIn   %s < %s" % (time_part, entity_id, role or ""))
+            self.print("{}In   {} < {}".format(time_part, entity_id, role or ""))
 
     def _generation(self, activity_id, prov_doc):
         args = self.args
@@ -1287,7 +1287,7 @@ class Tool:
             time = _prov_attr(PROV_ATTR_TIME, g)
             if args.start and args.end:
                 # 2 col timestamps
-                time_part = "%s %s " % (
+                time_part = "{} {} ".format(
                     TIME_PADDING,
                     time or "(unknown generation time)",
                 )
@@ -1296,7 +1296,7 @@ class Tool:
                 time_part = "%s " % (time or "(unknown generation time)")
             else:
                 time_part = ""
-            self.print("%sOut  %s > %s" % (time_part, entity_id, role or ""))
+            self.print("{}Out  {} > {}".format(time_part, entity_id, role or ""))
 
     def print(self, msg="", *args):
         if args and isinstance(msg, str) and "%" in msg:
@@ -1343,11 +1343,11 @@ class Tool:
         padded_start_time = ""
         if args.end and args.start:
             # 2 columns
-            padded_start_time = "%s %s " % (start_time, TIME_PADDING)
+            padded_start_time = f"{start_time} {TIME_PADDING} "
         elif args.end or args.start:
             # 1 column, we don't care which
             padded_start_time = "%s " % (start_time)
-        self.print("%sFlow %s [%s" % (padded_start_time, name, label))
+        self.print(f"{padded_start_time}Flow {name} [{label}")
 
         # inputs
         self._usage(activity_id, prov_doc)
@@ -1411,7 +1411,7 @@ class Tool:
         # end
         padded_end_time = ""
         if args.end and args.start:
-            padded_end_time = "%s %s " % (TIME_PADDING, end_time)
+            padded_end_time = f"{TIME_PADDING} {end_time} "
         elif args.end or args.start:
             padded_end_time = "%s " % (end_time)
 
@@ -1422,7 +1422,7 @@ class Tool:
             else:
                 w_duration = " (unknown duration)"
 
-        self.print("%sFlow %s ]%s%s" % (padded_end_time, name, label, w_duration))
+        self.print(f"{padded_end_time}Flow {name} ]{label}{w_duration}")
 
         if self.hints:
             print("Legend:")
