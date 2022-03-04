@@ -24,21 +24,31 @@ __license__ = (
     "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 )
 
+import datetime
 from functools import partial
+from typing import Any, Iterable, Optional, Sequence, Set, Tuple, TypeVar, Union
+
+prov_type = Union[type, Tuple[Union[type, Tuple[Any, ...]], ...]]
+
+_T = TypeVar("_T")
 
 
-def first(iterable):
+def first(iterable: Iterable[_T]) -> Optional[_T]:
+    """Return the first item from an interable."""
     return next(iter(iterable), None)
 
 
-def many(s):
+def many(s: Set[Any]) -> str:
+    """Convert a set of strings into a comma separated string."""
     return ", ".join(map(str, s))
 
 
 ANY_VALUE = object()
 
 
-def find_dict_with_item(json, val=ANY_VALUE, key="id"):
+def find_dict_with_item(
+    json: Any, val: Any = ANY_VALUE, key: str = "id"
+) -> Optional[Any]:
     if hasattr(json, "get"):
         if json.get(key, ANY_VALUE) == val:
             return json
@@ -55,8 +65,8 @@ def find_dict_with_item(json, val=ANY_VALUE, key="id"):
         return None
 
 
-def average(it):
-    l = list(it)
-    if not l:
+def average(it: Sequence[datetime.timedelta]) -> Optional[datetime.timedelta]:
+    """Average one or more timedeltas."""
+    if not it:
         return None
-    return sum(l[1:], l[0]) / len(l)
+    return sum(it[1:], it[0]) / len(it)
