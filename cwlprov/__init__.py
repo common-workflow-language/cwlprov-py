@@ -14,12 +14,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-cwlprov Python API and command line
-"""
+"""cwlprov: Python API and command line interface to CWLProv RO Bundles."""
 __author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
 __license__ = (
     "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 )
-__version__ = "0.1.1"
+__version__ = "0.1.2"

@@ -1,0 +1,3 @@
+from rdflib.util import guess_format as guess_format
+
+def main(target, _help=..., options: str = ..., stdin: bool = ...) -> None: ...

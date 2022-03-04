@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   tox:
@@ -16,9 +20,8 @@ jobs:
     strategy:
       matrix:
         py-ver-major: [3]
-        py-ver-minor: [6, 7, 8, 9, 10]
-        step: [unit]
-        #  step: [lint, unit, mypy]
+        py-ver-minor: [7, 8, 9, 10]
+        step: [lint, unit, mypy]
 
     env:
       py-semver: ${{ format('{0}.{1}', matrix.py-ver-major, matrix.py-ver-minor) }}
@@ -55,7 +58,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: ${{ matrix.step == 'unit' }}
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2.1.0
         with:
           fail_ci_if_error: true
 
@@ -66,12 +69,12 @@ jobs:
 
     strategy:
       matrix:
-        step: [lint-readme]
+        step: [pydocstyle]
         # step: [lint-readme, pydocstyle]
 
     env:
-      py-semver: 3.9
-      TOXENV: ${{ format('py39-{0}', matrix.step) }}
+      py-semver: "3.10"
+      TOXENV: ${{ format('py310-{0}', matrix.step) }}
 
     steps:
       - uses: actions/checkout@v2

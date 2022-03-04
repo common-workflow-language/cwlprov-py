@@ -22,6 +22,7 @@
 
 MODULE=cwlprov
 PACKAGE=cwlprov
+EXTRAS=
 
 # `SHELL=bash` doesn't work for some, so don't use BASH-isms like
 # `[[` conditional expressions.
@@ -48,15 +49,15 @@ install-dep: install-dependencies
 
 install-dependencies: FORCE
 	pip install --upgrade $(DEVPKGS)
-	pip install -r requirements.txt
+	pip install -r requirements.txt -r mypy-requirements.txt
 
 ## install     : install the ${MODULE} module and cwlprov
 install: FORCE
-	pip install .
+	pip install .$(EXTRAS)
 
 ## dev     : install the ${MODULE} module in dev mode
 dev: install-dep
-	pip install -e .
+	pip install -e .$(EXTRAS)
 
 ## dist        : create a module package for distribution
 dist: dist/${MODULE}-$(VERSION).tar.gz
@@ -121,8 +122,8 @@ diff_pylint_report: pylint_report.txt
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) inputs && ) true
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) outputs && ) true
 	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) runs && ) true
+	$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) runtimes && ) true
 	#$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) derived && ) true
-	#$(foreach RO,$(shell ls test),coverage run -m cwlprov.tool -d test/$(RO) runtimes && ) true
 
 coverage.xml: .coverage
 	coverage xml
@@ -151,8 +152,8 @@ test: $(PYSOURCES) FORCE
 	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) inputs && ) true
 	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) outputs && ) true
 	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) runs && ) true
+	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) runtimes && ) true
 	#$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) derived && ) true
-	#$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) runtimes && ) true
 
 
 ## testcov     : run the ${MODULE} test suite and collect coverage
@@ -172,10 +173,10 @@ list-author-emails:
 
 mypy3: mypy
 mypy: $(filter-out setup.py,$(PYSOURCES))
-	mypy $^
+	MYPYPATH=$$MYPYPATH:typeshed mypy $^
 
 pyupgrade: $(PYSOURCES)
-	pyupgrade --exit-zero-even-if-changed --py36-plus $^
+	pyupgrade --exit-zero-even-if-changed --py37-plus $^
 
 release-test: FORCE
 	git diff-index --quiet HEAD -- || ( echo You have uncommited changes, please commit them and try again; false )

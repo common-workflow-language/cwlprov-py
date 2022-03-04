@@ -27,12 +27,13 @@ from os import path
 
 from setuptools import find_packages, setup
 
+import cwlprov
+
 here = path.abspath(path.dirname(__file__))
 
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
-import cwlprov
 
 setup(
     name="cwlprov",
@@ -48,14 +49,14 @@ setup(
     license="Apache License, Version 2.0",
     url="https://github.com/common-workflow-language/cwlprov-py",
     #  download_url = 'https://github.com/stain/arcp-py/archive/0.1.0.tar.gz',
-    keywords="cwl prov cwlprov provenance",
+    keywords="cwl commonwl prov cwlprov provenance sciworkflows",
     install_requires=[
         "prov >= 1.5.1",
         "bdbag >= 1.4.1",
-        #'bagit >= 1.6.4', # Transitive from bdbag
+        #  'bagit >= 1.6.4', # Transitive from bdbag
         "arcp >= 0.2.0",
-        "rdflib-jsonld >= 0.4.0, < 0.6.2",
-        "rdflib >= 4.2.2, <6.0",
+        "rdflib >= 6, <7",
+        "typing_extensions",
     ],
     tests_require=["pytest"],
     entry_points={"console_scripts": ["cwlprov=cwlprov.tool:main"]},
@@ -67,10 +68,13 @@ setup(
         "Topic :: Software Development :: Build Tools",
         # 'License :: OSI Approved :: Apache Software License',
         # https://github.com/pypa/pypi-legacy/issues/564
-        #'License :: OSI Approved',
+        # 'License :: OSI Approved',
         # 'License :: OSI Approved :: Apache License, Version 2.0 (Apache-2.0)',
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Internet",
         "Topic :: System :: Archiving :: Packaging",
     ],

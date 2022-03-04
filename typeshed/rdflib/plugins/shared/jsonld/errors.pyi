@@ -1,0 +1,7 @@
+from typing import Any
+
+class JSONLDException(ValueError): ...
+
+RECURSIVE_CONTEXT_INCLUSION: Any
+INVALID_REMOTE_CONTEXT: Any
+INVALID_CONTEXT_ENTRY: Any
