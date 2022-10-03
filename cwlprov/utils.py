@@ -28,12 +28,12 @@ import datetime
 from functools import partial
 from typing import Any, Iterable, Optional, Sequence, Set, Tuple, TypeVar, Union
 
-prov_type = Union[type, Tuple[Union[type, Tuple[Any, ...]], ...]]
+prov_type = Union[type, tuple[type]]
 
 _T = TypeVar("_T")
 
 
-def first(iterable: Iterable[_T] | Sequence[_T]) -> Optional[_T]:
+def first(iterable: Union[Iterable[_T], Sequence[_T]]) -> Optional[_T]:
     """Return the first item from an interable."""
     return next(iter(iterable), None)
 

@@ -43,7 +43,7 @@ MANIFEST_PATH = pathlib.PurePosixPath("metadata/manifest.json")
 def _resource_as_path(path: str) -> pathlib.Path:
     filename = pkg_resources.resource_filename(__package__, path)
     p = pathlib.Path(filename)
-    if not p.exists:
+    if not p.exists():
         raise OSError(f"{p} is missing.")
     return p
 

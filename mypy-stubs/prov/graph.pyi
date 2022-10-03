@@ -1,28 +1,36 @@
+import networkx as nx
 from _typeshed import Incomplete
-from prov.model import PROV_ATTR_ACTIVITY as PROV_ATTR_ACTIVITY
-from prov.model import PROV_ATTR_AGENT as PROV_ATTR_AGENT
-from prov.model import PROV_ATTR_ALTERNATE1 as PROV_ATTR_ALTERNATE1
-from prov.model import PROV_ATTR_ALTERNATE2 as PROV_ATTR_ALTERNATE2
-from prov.model import PROV_ATTR_COLLECTION as PROV_ATTR_COLLECTION
-from prov.model import PROV_ATTR_DELEGATE as PROV_ATTR_DELEGATE
-from prov.model import PROV_ATTR_ENTITY as PROV_ATTR_ENTITY
-from prov.model import PROV_ATTR_GENERAL_ENTITY as PROV_ATTR_GENERAL_ENTITY
-from prov.model import PROV_ATTR_GENERATED_ENTITY as PROV_ATTR_GENERATED_ENTITY
-from prov.model import PROV_ATTR_INFORMANT as PROV_ATTR_INFORMANT
-from prov.model import PROV_ATTR_INFORMED as PROV_ATTR_INFORMED
-from prov.model import PROV_ATTR_RESPONSIBLE as PROV_ATTR_RESPONSIBLE
-from prov.model import PROV_ATTR_SPECIFIC_ENTITY as PROV_ATTR_SPECIFIC_ENTITY
-from prov.model import PROV_ATTR_TRIGGER as PROV_ATTR_TRIGGER
-from prov.model import PROV_ATTR_USED_ENTITY as PROV_ATTR_USED_ENTITY
-from prov.model import ProvActivity as ProvActivity
-from prov.model import ProvAgent as ProvAgent
-from prov.model import ProvDocument as ProvDocument
-from prov.model import ProvElement as ProvElement
-from prov.model import ProvEntity as ProvEntity
-from prov.model import ProvRecord as ProvRecord
-from prov.model import ProvRelation as ProvRelation
+from prov.model import (
+    PROV_ATTR_ACTIVITY as PROV_ATTR_ACTIVITY,
+    PROV_ATTR_AGENT as PROV_ATTR_AGENT,
+    PROV_ATTR_ALTERNATE1 as PROV_ATTR_ALTERNATE1,
+    PROV_ATTR_ALTERNATE2 as PROV_ATTR_ALTERNATE2,
+    PROV_ATTR_BUNDLE as PROV_ATTR_BUNDLE,
+    PROV_ATTR_COLLECTION as PROV_ATTR_COLLECTION,
+    PROV_ATTR_DELEGATE as PROV_ATTR_DELEGATE,
+    PROV_ATTR_ENDER as PROV_ATTR_ENDER,
+    PROV_ATTR_ENTITY as PROV_ATTR_ENTITY,
+    PROV_ATTR_GENERAL_ENTITY as PROV_ATTR_GENERAL_ENTITY,
+    PROV_ATTR_GENERATED_ENTITY as PROV_ATTR_GENERATED_ENTITY,
+    PROV_ATTR_INFORMANT as PROV_ATTR_INFORMANT,
+    PROV_ATTR_INFORMED as PROV_ATTR_INFORMED,
+    PROV_ATTR_PLAN as PROV_ATTR_PLAN,
+    PROV_ATTR_RESPONSIBLE as PROV_ATTR_RESPONSIBLE,
+    PROV_ATTR_SPECIFIC_ENTITY as PROV_ATTR_SPECIFIC_ENTITY,
+    PROV_ATTR_STARTER as PROV_ATTR_STARTER,
+    PROV_ATTR_TRIGGER as PROV_ATTR_TRIGGER,
+    PROV_ATTR_USED_ENTITY as PROV_ATTR_USED_ENTITY,
+    ProvActivity as ProvActivity,
+    ProvAgent as ProvAgent,
+    ProvBundle as ProvBundle,
+    ProvDocument as ProvDocument,
+    ProvElement as ProvElement,
+    ProvEntity as ProvEntity,
+    ProvRecord as ProvRecord,
+    ProvRelation as ProvRelation,
+)
 
 INFERRED_ELEMENT_CLASS: Incomplete
 
-def prov_to_graph(prov_document): ...
-def graph_to_prov(g): ...
+def prov_to_graph(prov_document: ProvDocument) -> nx.MultiDiGraph: ...
+def graph_to_prov(g: nx.MultiDiGraph) -> ProvDocument: ...
