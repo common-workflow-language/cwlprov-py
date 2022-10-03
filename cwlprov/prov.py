@@ -65,6 +65,7 @@ from prov.model import (
     ProvSpecialization,
     ProvStart,
     ProvUsage,
+    QualifiedNameCandidate,
 )
 
 from .utils import first, prov_type
@@ -115,8 +116,12 @@ class Provenance:
     def uri(self) -> str:
         return self.run_id.uri
 
-    def entity(self, uri: Optional[Any]) -> Optional["Entity"]:
-        records = self.prov_doc.get_record(_as_identifier(uri))
+    def entity(self, uri: Any) -> Optional["Entity"]:
+        ident = _as_identifier(uri)
+        if not ident:
+            _logger.warning("Entity %s not found in %s", uri, self)
+            return None
+        records = self.prov_doc.get_record(ident)
         if not records:
             _logger.warning("Entity %s not found in %s", uri, self)
             return None
@@ -132,6 +137,9 @@ class Provenance:
         if not uri:
             uri = self.run_id
         activity_id = _as_identifier(uri)
+        if not activity_id:
+            _logger.warning("Activity %s not found in %s", uri, self)
+            return None
         records = self.prov_doc.get_record(activity_id)
         if not records:
             _logger.warning("Activity %s not found in %s", uri, self)
@@ -170,11 +178,13 @@ class Provenance:
     def record_with_attr(
         self,
         prov_type: prov_type,
-        attrib_value: Identifier,
+        attrib_value: QualifiedName,
         with_attrib: QualifiedName = PROV_ATTR_ACTIVITY,
     ) -> Iterable[ProvRecord]:
         for elem in self.prov_doc.get_records(prov_type):
-            if (with_attrib, attrib_value) in elem.attributes:
+            if (with_attrib, attrib_value) in cast(
+                tuple[QualifiedName, Identifier], elem.attributes
+            ):
                 yield elem
 
 
@@ -191,24 +201,24 @@ class _Prov:
         self,
         ProvClass: prov_type,
         CreateClass: Callable[[Provenance, ProvRecord], "_T"],
-        attr: Namespace,
+        attr: QualifiedName,
     ) -> Iterable["_T"]:
         records = self.provenance.record_with_attr(ProvClass, self.id, attr)
         return (CreateClass(self.provenance, r) for r in records)
 
     @property
     def id(self) -> QualifiedName:
-        return self.record.identifier
+        return cast(QualifiedName, self.record.identifier)
 
     @property
-    def label(self) -> Optional[str]:
+    def label(self) -> Optional[QualifiedName]:
         return self._prov_attr("prov:label")
 
     @property
-    def type(self) -> Optional[str]:
+    def type(self) -> Optional[QualifiedName]:
         return self._prov_attr("prov:type")
 
-    def types(self) -> Set[str]:
+    def types(self) -> Set[QualifiedName]:
         return set(self._prov_attrs("prov:type"))
 
     @property
@@ -222,10 +232,10 @@ class _Prov:
     def __str__(self) -> str:
         return self.record.get_provn()
 
-    def _prov_attr(self, attr: str) -> Optional[Any]:
+    def _prov_attr(self, attr: QualifiedNameCandidate) -> Optional[QualifiedName]:
         return first(self._prov_attrs(attr))
 
-    def _prov_attrs(self, attr: str) -> Set[Any]:
+    def _prov_attrs(self, attr: QualifiedNameCandidate) -> Set[QualifiedName]:
         return self.record.get_attribute(attr)
 
 
