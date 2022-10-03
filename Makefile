@@ -180,7 +180,7 @@ list-author-emails:
 
 mypy3: mypy
 mypy: $(filter-out setup.py,$(PYSOURCES))
-	MYPYPATH=$$MYPYPATH:typeshed mypy $^
+	MYPYPATH=$$MYPYPATH:mypy-stubs mypy $^
 
 pyupgrade: $(PYSOURCES)
 	pyupgrade --exit-zero-even-if-changed --py37-plus $^
