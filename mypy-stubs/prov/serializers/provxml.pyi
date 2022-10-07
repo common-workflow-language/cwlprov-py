@@ -1,19 +1,21 @@
-from prov.constants import *
 import prov.identifier
-from prov.model import DEFAULT_NAMESPACES as DEFAULT_NAMESPACES, sorted_attributes as sorted_attributes
-from prov.serializers import Serializer as Serializer
-from typing import Any
+from _typeshed import Incomplete
+from prov.constants import *
+from prov.model import DEFAULT_NAMESPACES as DEFAULT_NAMESPACES
+from prov.model import sorted_attributes as sorted_attributes
 
-logger: Any
-FULL_NAMES_MAP: Any
-FULL_PROV_RECORD_IDS_MAP: Any
+logger: Incomplete
+FULL_NAMES_MAP: Incomplete
+FULL_PROV_RECORD_IDS_MAP: Incomplete
 XML_XSD_URI: str
 
 class ProvXMLException(prov.Error): ...
 
-class ProvXMLSerializer(Serializer):
+class ProvXMLSerializer(prov.serializers.Serializer):
     def serialize(self, stream, force_types: bool = ..., **kwargs) -> None: ...
-    def serialize_bundle(self, bundle, element: Any | None = ..., force_types: bool = ...): ...
+    def serialize_bundle(
+        self, bundle, element: Incomplete | None = ..., force_types: bool = ...
+    ): ...
     def deserialize(self, stream, **kwargs): ...
     def deserialize_subtree(self, xml_doc, bundle): ...
 

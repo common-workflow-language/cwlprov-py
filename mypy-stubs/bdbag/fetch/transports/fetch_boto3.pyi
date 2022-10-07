@@ -1,7 +1,18 @@
 from bdbag.fetch import *
-from bdbag import get_typed_exception as get_typed_exception, stob as stob, urlsplit as urlsplit, urlunsplit as urlunsplit
-from bdbag.bdbag_config import DEFAULT_CONFIG as DEFAULT_CONFIG, DEFAULT_FETCH_CONFIG as DEFAULT_FETCH_CONFIG, FETCH_CONFIG_TAG as FETCH_CONFIG_TAG
-from bdbag.fetch.transports.base_transport import BaseFetchTransport as BaseFetchTransport
+from bdbag import (
+    get_typed_exception as get_typed_exception,
+    stob as stob,
+    urlsplit as urlsplit,
+    urlunsplit as urlunsplit,
+)
+from bdbag.bdbag_config import (
+    DEFAULT_CONFIG as DEFAULT_CONFIG,
+    DEFAULT_FETCH_CONFIG as DEFAULT_FETCH_CONFIG,
+    FETCH_CONFIG_TAG as FETCH_CONFIG_TAG,
+)
+from bdbag.fetch.transports.base_transport import (
+    BaseFetchTransport as BaseFetchTransport,
+)
 from typing import Any
 
 logger: Any

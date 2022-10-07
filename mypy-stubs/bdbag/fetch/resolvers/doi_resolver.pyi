@@ -1,6 +1,8 @@
 from bdbag import get_typed_exception as get_typed_exception
 from bdbag.bdbagit import CHECKSUM_ALGOS as CHECKSUM_ALGOS
-from bdbag.fetch.resolvers.base_resolver import BaseResolverHandler as BaseResolverHandler
+from bdbag.fetch.resolvers.base_resolver import (
+    BaseResolverHandler as BaseResolverHandler,
+)
 from typing import Any
 
 logger: Any

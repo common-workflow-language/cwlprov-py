@@ -1,4 +1,6 @@
-from bdbag.fetch.transports.base_transport import BaseFetchTransport as BaseFetchTransport
+from bdbag.fetch.transports.base_transport import (
+    BaseFetchTransport as BaseFetchTransport,
+)
 from typing import Any
 
 logger: Any
