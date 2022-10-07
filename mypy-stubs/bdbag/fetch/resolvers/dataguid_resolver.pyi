@@ -1,5 +1,7 @@
 from bdbag import get_typed_exception as get_typed_exception, urlsplit as urlsplit
-from bdbag.fetch.resolvers.base_resolver import BaseResolverHandler as BaseResolverHandler
+from bdbag.fetch.resolvers.base_resolver import (
+    BaseResolverHandler as BaseResolverHandler,
+)
 from collections import OrderedDict as OrderedDict
 from typing import Any
 

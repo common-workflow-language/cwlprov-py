@@ -105,10 +105,10 @@ codespell:
 
 ## format                 : check/fix all code indentation and formatting (runs black)
 format: $(PYSOURCES)
-	black $^
+	black $^ mypy-stubs
 
 format-check: $(PYSOURCES)
-	black --diff --check $^
+	black --diff --check $^ mypy-stubs
 
 ## pylint                 : run static code analysis on Python code
 pylint: $(PYSOURCES)

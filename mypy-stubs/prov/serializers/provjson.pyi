@@ -1,11 +1,18 @@
-from prov.constants import *
 import json
-from prov import Error as Error
-from prov.model import Identifier as Identifier, Literal as Literal, Namespace as Namespace, ProvBundle as ProvBundle, ProvDocument as ProvDocument, QualifiedName as QualifiedName, first as first, parse_xsd_datetime as parse_xsd_datetime
-from prov.serializers import Serializer as Serializer
-from typing import Any
 
-logger: Any
+from _typeshed import Incomplete
+from prov.constants import *
+from prov.model import Identifier as Identifier
+from prov.model import Literal as Literal
+from prov.model import Namespace as Namespace
+from prov.model import ProvBundle as ProvBundle
+from prov.model import ProvDocument as ProvDocument
+from prov.model import first as first
+from prov.model import parse_xsd_datetime as parse_xsd_datetime
+from prov.serializers import Error as Error
+from prov.serializers import Serializer as Serializer
+
+logger: Incomplete
 
 class ProvJSONException(Error): ...
 
@@ -13,7 +20,7 @@ class AnonymousIDGenerator:
     def __init__(self) -> None: ...
     def get_anon_id(self, obj, local_prefix: str = ...): ...
 
-LITERAL_XSDTYPE_MAP: Any
+LITERAL_XSDTYPE_MAP: Incomplete
 
 class ProvJSONSerializer(Serializer):
     def serialize(self, stream, **kwargs) -> None: ...

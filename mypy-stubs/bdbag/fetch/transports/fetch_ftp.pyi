@@ -1,6 +1,14 @@
 from bdbag.fetch import *
-from bdbag import get_typed_exception as get_typed_exception, urlcleanup as urlcleanup, urlretrieve as urlretrieve, urlsplit as urlsplit, urlunsplit as urlunsplit
-from bdbag.fetch.transports.base_transport import BaseFetchTransport as BaseFetchTransport
+from bdbag import (
+    get_typed_exception as get_typed_exception,
+    urlcleanup as urlcleanup,
+    urlretrieve as urlretrieve,
+    urlsplit as urlsplit,
+    urlunsplit as urlunsplit,
+)
+from bdbag.fetch.transports.base_transport import (
+    BaseFetchTransport as BaseFetchTransport,
+)
 from typing import Any
 
 logger: Any
