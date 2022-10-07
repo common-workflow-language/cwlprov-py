@@ -30,12 +30,10 @@ from typing import TYPE_CHECKING, Iterable, Optional, Set, Union
 
 import arcp
 import pkg_resources
+from bdbag.bdbagit import BDBag
 from rdflib import BNode, Graph, Namespace, URIRef
 from rdflib.namespace import DC, DCTERMS, FOAF, OWL
-
-if TYPE_CHECKING:
-    from bdbag.bdbagit import BDBag
-    from rdflib.term import Node
+from rdflib.term import Identifier, Node
 
 _logger = logging.getLogger(__name__)
 
@@ -65,6 +63,8 @@ OA = Namespace("http://www.w3.org/ns/oa#")
 
 
 class ResearchObject:
+    manifest: Graph
+
     def __init__(self, bag: "BDBag") -> None:
         if not bag.normalized_filesystem_names:
             # Not populated? Validate
@@ -90,14 +90,14 @@ class ResearchObject:
             return u
 
     @property
-    def id(self) -> Optional["Node"]:
+    def id(self) -> Optional["Identifier"]:
         i = self.id_uriref
         if isinstance(i, BNode):
             return next(self.manifest.objects(i, OWL.sameAs))
         return None
 
     @property
-    def id_uriref(self) -> "Node":
+    def id_uriref(self) -> Node:
         manifest = URIRef(self.resolve_uri("metadata/manifest.json"))
         ros = set(self.manifest.subjects(ORE.isDescribedBy, manifest))
         if not ros:
@@ -164,8 +164,8 @@ class ResearchObject:
     def _uriref(
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
-        uri: Optional[Union[str, "Node"]] = None,
-    ) -> "Node":
+        uri: Optional[Union[str, Node]] = None,
+    ) -> Node:
         if uri:
             return URIRef(str(uri))
         elif path:
@@ -202,7 +202,7 @@ class ResearchObject:
     def annotations_with_content(
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
-        uri: Optional[Union[str, "Node"]] = None,
+        uri: Optional[Union[str, Identifier]] = None,
     ) -> Set["Annotation"]:
         resource = self._uriref(path=path, uri=uri)
         new_annotation = partial(Annotation, self.manifest)
@@ -211,8 +211,8 @@ class ResearchObject:
     def describes(
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
-        uri: Optional[Union[str, "Node"]] = None,
-    ) -> Optional["Node"]:
+        uri: Optional[Union[str, Identifier]] = None,
+    ) -> Optional[Identifier]:
         return next(
             (
                 a.hasTarget
@@ -226,13 +226,13 @@ class ResearchObject:
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
         uri: Optional[str] = None,
-    ) -> Optional[Set["Node"]]:
+    ) -> Optional[Set[Node]]:
         for a in self.annotations_about(path, uri):
             if a.motivatedBy == PROV.has_provenance:
                 return a.hasBodies
         return None
 
-    def resources_with_provenance(self) -> Iterable["Node"]:
+    def resources_with_provenance(self) -> Iterable[Node]:
         new_annotation = partial(Annotation, self.manifest)
         anns = map(
             new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance)
@@ -259,7 +259,7 @@ class ResearchObject:
         )
 
     @property
-    def workflow_id(self) -> Optional["Node"]:
+    def workflow_id(self) -> Optional[Identifier]:
         wf_id = self.describes(uri=self.id)
         _logger.debug("Primary Workflow run: %s", wf_id)
         return wf_id
@@ -271,23 +271,23 @@ class Annotation:
         self._id = uri
 
     @property
-    def hasBody(self) -> Optional["Node"]:
+    def hasBody(self) -> Optional[Node]:
         return next(self._graph.objects(self._id, OA.hasBody), None)
 
     @property
-    def hasBodies(self) -> Set["Node"]:
+    def hasBodies(self) -> Set[Node]:
         return set(self._graph.objects(self._id, OA.hasBody))
 
     @property
-    def hasTarget(self) -> Optional["Node"]:
+    def hasTarget(self) -> Optional[Identifier]:
         return next(self._graph.objects(self._id, OA.hasTarget), None)
 
     @property
-    def hasTargets(self) -> Set["Node"]:
+    def hasTargets(self) -> Set[Node]:
         return set(self._graph.objects(self._id, OA.hasTarget))
 
     @property
-    def motivatedBy(self) -> Optional["Node"]:
+    def motivatedBy(self) -> Optional[Node]:
         return next(self._graph.objects(self._id, OA.motivatedBy), None)
 
     def __repr__(self) -> str:
@@ -306,11 +306,11 @@ class Agent:
         return None
 
     @property
-    def name(self) -> Optional["Node"]:
+    def name(self) -> Optional[Node]:
         return next(self._graph.objects(self._id, FOAF.name), None)
 
     @property
-    def orcid(self) -> Optional["Node"]:
+    def orcid(self) -> Optional[Node]:
         return next(self._graph.objects(self._id, ROTERMS.orcid), None)
 
     def __repr__(self) -> str:

@@ -632,7 +632,7 @@ class Tool(ContextManager["Tool"]):
 
         full_validation = args.cmd == "validate"
         _logger.info("Opening BagIt %s", self.folder)
-        ## BagIt check
+        # BagIt check
         try:
             bag = BDBag(str(self.folder))
         except BagError as e:
