@@ -1,4 +1,8 @@
-from bdbag import get_typed_exception as get_typed_exception, stob as stob, urlsplit as urlsplit
+from bdbag import (
+    get_typed_exception as get_typed_exception,
+    stob as stob,
+    urlsplit as urlsplit,
+)
 from bdbag.bdbag_config import DEFAULT_ID_RESOLVERS as DEFAULT_ID_RESOLVERS
 from typing import Any
 

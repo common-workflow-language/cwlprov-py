@@ -1,4 +1,5 @@
-from rdflib.namespace import DefinedNamespace as DefinedNamespace, Namespace as Namespace
+from rdflib.namespace import DefinedNamespace as DefinedNamespace
+from rdflib.namespace import Namespace as Namespace
 from rdflib.term import URIRef as URIRef
 
 class OWL(DefinedNamespace):
@@ -79,5 +80,3 @@ class OWL(DefinedNamespace):
     topObjectProperty: URIRef
     imports: URIRef
     versionIRI: URIRef
-    rational: URIRef
-    real: URIRef

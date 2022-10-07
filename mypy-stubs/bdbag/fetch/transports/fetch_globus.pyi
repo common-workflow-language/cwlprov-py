@@ -1,6 +1,8 @@
 from bdbag.fetch import *
 from bdbag import get_typed_exception as get_typed_exception, urlsplit as urlsplit
-from bdbag.fetch.transports.base_transport import BaseFetchTransport as BaseFetchTransport
+from bdbag.fetch.transports.base_transport import (
+    BaseFetchTransport as BaseFetchTransport,
+)
 from typing import Any
 
 logger: Any

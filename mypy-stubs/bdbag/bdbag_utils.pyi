@@ -1,7 +1,21 @@
-from bdbag import FILTER_DOCSTRING as FILTER_DOCSTRING, filter_dict as filter_dict, parse_content_disposition as parse_content_disposition, urlsplit as urlsplit
-from bdbag.bdbag_config import DEFAULT_CONFIG_FILE as DEFAULT_CONFIG_FILE, DEFAULT_CONFIG_FILE_ENVAR as DEFAULT_CONFIG_FILE_ENVAR, DEFAULT_FETCH_CONFIG as DEFAULT_FETCH_CONFIG, FETCH_CONFIG_TAG as FETCH_CONFIG_TAG, read_config as read_config
+from bdbag import (
+    FILTER_DOCSTRING as FILTER_DOCSTRING,
+    filter_dict as filter_dict,
+    parse_content_disposition as parse_content_disposition,
+    urlsplit as urlsplit,
+)
+from bdbag.bdbag_config import (
+    DEFAULT_CONFIG_FILE as DEFAULT_CONFIG_FILE,
+    DEFAULT_CONFIG_FILE_ENVAR as DEFAULT_CONFIG_FILE_ENVAR,
+    DEFAULT_FETCH_CONFIG as DEFAULT_FETCH_CONFIG,
+    FETCH_CONFIG_TAG as FETCH_CONFIG_TAG,
+    read_config as read_config,
+)
 from bdbag.bdbagit import force_unicode as force_unicode
-from bdbag.fetch.auth.keychain import DEFAULT_KEYCHAIN_FILE as DEFAULT_KEYCHAIN_FILE, read_keychain as read_keychain
+from bdbag.fetch.auth.keychain import (
+    DEFAULT_KEYCHAIN_FILE as DEFAULT_KEYCHAIN_FILE,
+    read_keychain as read_keychain,
+)
 from bdbag.fetch.transports.fetch_http import HTTPFetchTransport as HTTPFetchTransport
 from typing import Any
 
@@ -12,7 +26,9 @@ def create_rfm_from_url_list(args) -> None: ...
 def create_rfm_from_file(args) -> None: ...
 def deduplicate_rfm_entries(rfm): ...
 def head_for_headers(session, url, raise_for_status: bool = ...): ...
-def url_format(formatter, base_url, filepath: Any | None = ..., filename: Any | None = ...): ...
+def url_format(
+    formatter, base_url, filepath: Any | None = ..., filename: Any | None = ...
+): ...
 def compute_hashes(obj, hashes=...): ...
 def compute_file_hashes(file_path, hashes=...): ...
 def decode_base64_to_hex(base64str): ...

@@ -100,7 +100,7 @@ def _as_identifier(uri_or_identifier: Optional[Any]) -> Optional[Identifier]:
 class Provenance:
     def __init__(self, ro: "ResearchObject", run: Optional[str] = None) -> None:
         self.ro = ro
-        self.run_id = Identifier(run or ro.workflow_id)
+        self.run_id = Identifier(run if isinstance(run, str) else ro.workflow_id or "")
         self._path = None
         prov_doc, path = self._load_prov_document()
         if not prov_doc:
@@ -120,7 +120,7 @@ class Provenance:
         if not records:
             _logger.warning("Entity %s not found in %s", uri, self)
             return None
-        entity = first(records)
+        entity = first(records) if isinstance(records, list) else records
         if not entity:
             _logger.warning("Entity %s not found in %s", uri, self)
             return None
@@ -136,7 +136,7 @@ class Provenance:
         if not records:
             _logger.warning("Activity %s not found in %s", uri, self)
             return None
-        activity = first(records)
+        activity = first(records) if isinstance(records, list) else records
         if not activity:
             _logger.warning("Activity %s not found in %s", uri, self)
             return None
@@ -171,7 +171,7 @@ class Provenance:
         self,
         prov_type: prov_type,
         attrib_value: Identifier,
-        with_attrib: Namespace = PROV_ATTR_ACTIVITY,
+        with_attrib: QualifiedName = PROV_ATTR_ACTIVITY,
     ) -> Iterable[ProvRecord]:
         for elem in self.prov_doc.get_records(prov_type):
             if (with_attrib, attrib_value) in elem.attributes:

@@ -33,7 +33,7 @@ prov_type = Union[type, Tuple[Union[type, Tuple[Any, ...]], ...]]
 _T = TypeVar("_T")
 
 
-def first(iterable: Iterable[_T]) -> Optional[_T]:
+def first(iterable: Iterable[_T] | Sequence[_T]) -> Optional[_T]:
     """Return the first item from an interable."""
     return next(iter(iterable), None)
 
