@@ -55,7 +55,7 @@ setup(
         "bdbag >= 1.4.1",
         #  'bagit >= 1.6.4', # Transitive from bdbag
         "arcp >= 0.2.0",
-        "rdflib >= 6, <7",
+        "rdflib >= 6, < 8",
         "typing_extensions",
     ],
     tests_require=["pytest"],
