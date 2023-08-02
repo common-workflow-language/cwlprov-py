@@ -1,6 +1,6 @@
 prov >= 1.5.1
 bdbag >= 1.4.1
 arcp >= 0.2.0
-rdflib >= 6, <7
+rdflib >= 6, < 8
 networkx>=2.6;python_version>"3.6"  # not directly required, pinned by Snyk to avoid a vulnerability
 typing_extensions
