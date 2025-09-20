@@ -28,7 +28,7 @@ import datetime
 from functools import partial
 from typing import Any, Iterable, Optional, Sequence, Set, Tuple, TypeVar, Union
 
-prov_type = Union[type, Tuple[Union[type, Tuple[Any, ...]], ...]]
+prov_type = Union[type, tuple[type]]
 
 _T = TypeVar("_T")
 

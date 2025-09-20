@@ -59,14 +59,13 @@ from typing import (
 from uuid import UUID
 
 from bdbag.bdbagit import BagError, BDBag
-from prov.identifier import Identifier, QualifiedName
+from prov.identifier import Identifier, Namespace, QualifiedName
 from prov.model import (
     PROV_ATTR_ACTIVITY,
     PROV_ATTR_ENTITY,
     PROV_ATTR_STARTER,
     PROV_ATTR_TIME,
     PROV_ROLE,
-    Namespace,
     ProvBundle,
     ProvDocument,
     ProvEnd,
@@ -427,14 +426,14 @@ def _prov_with_attr(
     prov_doc: ProvBundle,
     prov_type: prov_type,
     attrib_value: Identifier,
-    with_attrib: Namespace = PROV_ATTR_ACTIVITY,
+    with_attrib: QualifiedName = PROV_ATTR_ACTIVITY,
 ) -> Iterable[ProvRecord]:
     for elem in prov_doc.get_records(prov_type):
         if (with_attrib, attrib_value) in elem.attributes:
             yield elem
 
 
-def _prov_attr(attr: str, elem: ProvRecord) -> Optional[Any]:
+def _prov_attr(attr: QualifiedName, elem: ProvRecord) -> Optional[Any]:
     return first(elem.get_attribute(attr))
 
 
@@ -1148,7 +1147,7 @@ class Tool(ContextManager["Tool"]):
                     _logger.warning("No provenance found for: %s", name)
                     continue
 
-                activity_id = Identifier(run)
+                activity_id = Identifier(str(run))
                 activity_records = prov_doc.get_record(activity_id)
                 if not activity_records:
                     _logger.error("Provenance does not describe activity %s", run)
