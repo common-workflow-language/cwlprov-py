@@ -29,7 +29,7 @@ EXTRAS=
 PYSOURCES=$(wildcard ${MODULE}/**.py) setup.py
 DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 tox tox-pyenv \
 	isort wheel autoflake flake8-bugbear pyupgrade bandit \
-	-rtest-requirements.txt -rmypy-requirements.txt
+	-rtest-requirements.txt -rmypy-requirements.txt auto-walrus
 COVBASE=coverage run --append
 
 # Updating the Major & Minor version below?
@@ -183,7 +183,8 @@ mypy: $(filter-out setup.py,$(PYSOURCES))
 	MYPYPATH=$$MYPYPATH:mypy-stubs mypy $^
 
 pyupgrade: $(PYSOURCES)
-	pyupgrade --exit-zero-even-if-changed --py37-plus $^
+	pyupgrade --exit-zero-even-if-changed --py39-plus $^
+	auto-walrus $^
 
 release-test: FORCE
 	git diff-index --quiet HEAD -- || ( echo You have uncommitted changes, please commit them and try again; false )
