@@ -183,17 +183,20 @@ class ResearchObject:
 
     @property
     def conformsTo(self) -> set[str]:
+        """Find which things this RO conforms to."""
         resource = self._uriref()
         return set(map(str, self.manifest.objects(resource, DCTERMS.conformsTo)))
 
     @property
     def createdBy(self) -> set["Agent"]:
+        """Find the set of Agents who created this RO."""
         resource = self._uriref()
         new_agent = partial(Agent, self.manifest)
         return set(map(new_agent, self.manifest.objects(resource, PAV.createdBy)))
 
     @property
     def authoredBy(self) -> set["Agent"]:
+        """Find the set of Agents who authored this RO."""
         resource = self._uriref()
         new_agent = partial(Agent, self.manifest)
         return set(map(new_agent, self.manifest.objects(resource, PAV.authoredBy)))
