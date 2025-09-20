@@ -22,6 +22,9 @@ __license__ = (
     "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 )
 
+import atexit
+import importlib.resources
+from contextlib import ExitStack
 import logging
 import pathlib
 import urllib.parse
@@ -29,7 +32,6 @@ from functools import partial
 from typing import TYPE_CHECKING, Iterable, Optional, Set, Union
 
 import arcp
-import pkg_resources
 from bdbag.bdbagit import BDBag
 from rdflib import BNode, Graph, Namespace, URIRef
 from rdflib.namespace import DC, DCTERMS, FOAF, OWL
@@ -41,8 +43,10 @@ MANIFEST_PATH = pathlib.PurePosixPath("metadata/manifest.json")
 
 
 def _resource_as_path(path: str) -> pathlib.Path:
-    filename = pkg_resources.resource_filename(__package__, path)
-    p = pathlib.Path(filename)
+    file_manager = ExitStack()
+    atexit.register(file_manager.close)
+    ref = importlib.resources.files(__package__) / path
+    p = file_manager.enter_context(importlib.resources.as_file(ref))
     if not p.exists():
         raise OSError(f"{p} is missing.")
     return p
