@@ -20,4 +20,4 @@ __copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
 __license__ = (
     "Apache License, version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)"
 )
-__version__ = "0.1.2"
+__version__ = "0.2.0"
