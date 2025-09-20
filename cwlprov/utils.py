@@ -23,8 +23,9 @@ __license__ = (
 )
 
 import datetime
+from collections.abc import Iterable, Sequence
 from functools import partial
-from typing import Any, Iterable, Optional, Sequence, Set, Tuple, TypeVar, Union
+from typing import Any, Optional, Set, Tuple, TypeVar, Union
 
 prov_type = Union[type, tuple[type]]
 
@@ -36,7 +37,7 @@ def first(iterable: Union[Iterable[_T], Sequence[_T]]) -> Optional[_T]:
     return next(iter(iterable), None)
 
 
-def many(s: Set[Any]) -> str:
+def many(s: set[Any]) -> str:
     """Convert a set of strings into a comma separated string."""
     return ", ".join(map(str, s))
 
