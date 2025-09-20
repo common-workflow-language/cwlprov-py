@@ -130,6 +130,7 @@ class Status(IntEnum):
 
 
 def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
+    """Parse the command line arguments."""
     parser = argparse.ArgumentParser(
         description="cwlprov explores Research Objects containing provenance of "
         "Common Workflow Language executions. <https://w3id.org/cwl/prov/>"
@@ -485,8 +486,10 @@ def _set_log_level(quiet: Optional[bool] = None, verbose: int = 0) -> None:
 
 
 class Tool(ContextManager["Tool"]):
+    """The cwlprov-py tool."""
+
     def __init__(self, args: Optional[list[str]] = None) -> None:
-        """Create a Tool and open the output stream."""
+        """Open the output stream."""
         self.args = parse_args(args)
         if self.args.output != "-":
             self.output: Optional[TextIO] = open(
@@ -1505,6 +1508,7 @@ class Tool(ContextManager["Tool"]):
 
 
 def main(args: Optional[list[str]] = None) -> int:
+    """Run the cwlprov-py tool."""
     with Tool(args) as tool:
         try:
             return tool.main()

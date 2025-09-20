@@ -383,6 +383,7 @@ class Entity(_Prov):
         return self._records(ProvDerivation, Derivation, PROV_ATTR_USED_ENTITY)
 
     def secondary_files(self) -> list[Any]:
+        """Return any SecondaryFiles for this Entity."""
         return [
             d.generated_entity()
             for d in self.derivations()
