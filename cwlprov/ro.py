@@ -27,9 +27,10 @@ import importlib.resources
 import logging
 import pathlib
 import urllib.parse
+from collections.abc import Iterable
 from contextlib import ExitStack
 from functools import partial
-from typing import TYPE_CHECKING, Iterable, Optional, Set, Union
+from typing import TYPE_CHECKING, Optional, Set, Union
 
 import arcp
 from bdbag.bdbagit import BDBag
@@ -181,18 +182,18 @@ class ResearchObject:
             return self.id_uriref
 
     @property
-    def conformsTo(self) -> Set[str]:
+    def conformsTo(self) -> set[str]:
         resource = self._uriref()
         return set(map(str, self.manifest.objects(resource, DCTERMS.conformsTo)))
 
     @property
-    def createdBy(self) -> Set["Agent"]:
+    def createdBy(self) -> set["Agent"]:
         resource = self._uriref()
         new_agent = partial(Agent, self.manifest)
         return set(map(new_agent, self.manifest.objects(resource, PAV.createdBy)))
 
     @property
-    def authoredBy(self) -> Set["Agent"]:
+    def authoredBy(self) -> set["Agent"]:
         resource = self._uriref()
         new_agent = partial(Agent, self.manifest)
         return set(map(new_agent, self.manifest.objects(resource, PAV.authoredBy)))
@@ -201,7 +202,7 @@ class ResearchObject:
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
         uri: Optional[str] = None,
-    ) -> Set["Annotation"]:
+    ) -> set["Annotation"]:
         resource = self._uriref(path=path, uri=uri)
         new_annotation = partial(Annotation, self.manifest)
         return set(map(new_annotation, self.manifest.subjects(OA.hasTarget, resource)))
@@ -210,7 +211,7 @@ class ResearchObject:
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
         uri: Optional[Union[str, Identifier]] = None,
-    ) -> Set["Annotation"]:
+    ) -> set["Annotation"]:
         resource = self._uriref(path=path, uri=uri)
         new_annotation = partial(Annotation, self.manifest)
         return set(map(new_annotation, self.manifest.subjects(OA.hasBody, resource)))
@@ -233,7 +234,7 @@ class ResearchObject:
         self,
         path: Optional[Union[str, pathlib.PurePosixPath]] = None,
         uri: Optional[str] = None,
-    ) -> Optional[Set[Node]]:
+    ) -> Optional[set[Node]]:
         for a in self.annotations_about(path, uri):
             if a.motivatedBy == PROV.has_provenance:
                 return a.hasBodies
@@ -288,7 +289,7 @@ class Annotation:
         return next(self._graph.objects(self._id, OA.hasBody), None)
 
     @property
-    def hasBodies(self) -> Set[Node]:
+    def hasBodies(self) -> set[Node]:
         """Find the set of body Nodes of this Annotation."""
         return set(self._graph.objects(self._id, OA.hasBody))
 
@@ -298,7 +299,7 @@ class Annotation:
         return next(self._graph.objects(self._id, OA.hasTarget), None)
 
     @property
-    def hasTargets(self) -> Set[Node]:
+    def hasTargets(self) -> set[Node]:
         """Find which Noes this Annotation targets."""
         return set(self._graph.objects(self._id, OA.hasTarget))
 
@@ -343,10 +344,8 @@ class Agent:
     def __str__(self) -> str:
         """Print the name, identifier, and uri of this Agent."""
         s = str(self.name) or "(unknown)"
-        o = self.orcid
-        if o:
+        if o := self.orcid:
             s += " <%s>" % o
-        u = self.uri
-        if u:
+        if u := self.uri:
             s += " <%s>" % u
         return s

@@ -35,6 +35,7 @@ import shutil
 import sys
 import tempfile
 import urllib.parse
+from collections.abc import Iterable, MutableMapping, MutableSequence
 from enum import IntEnum
 from functools import partial
 from pathlib import Path
@@ -44,10 +45,7 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
-    Iterable,
     List,
-    MutableMapping,
-    MutableSequence,
     Optional,
     Set,
     TextIO,
@@ -131,7 +129,7 @@ class Status(IntEnum):
     MISSING_MANIFEST = 171
 
 
-def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="cwlprov explores Research Objects containing provenance of "
         "Common Workflow Language executions. <https://w3id.org/cwl/prov/>"
@@ -400,8 +398,8 @@ def _find_bagit_folder(folder: Optional[str] = None) -> Optional[pathlib.Path]:
         pfolder = pfolder.parent
 
 
-def _info_set(bag: BDBag, key: str) -> Set[Any]:
-    v: Union[str, List[Any]] = bag.info.get(key, [])
+def _info_set(bag: BDBag, key: str) -> set[Any]:
+    v: Union[str, list[Any]] = bag.info.get(key, [])
     if isinstance(v, list):
         return set(v)
     else:
@@ -412,7 +410,7 @@ def _simpler_uuid(uri: Any) -> str:
     return str(uri).replace("urn:uuid:", "")
 
 
-def _as_uuid(w: str) -> Tuple[str, Optional[UUID], str]:
+def _as_uuid(w: str) -> tuple[str, Optional[UUID], str]:
     try:
         uuid = UUID(w.replace("urn:uuid:", ""))
         return (uuid.urn, uuid, str(uuid))
@@ -487,7 +485,7 @@ def _set_log_level(quiet: Optional[bool] = None, verbose: int = 0) -> None:
 
 
 class Tool(ContextManager["Tool"]):
-    def __init__(self, args: Optional[List[str]] = None) -> None:
+    def __init__(self, args: Optional[list[str]] = None) -> None:
         """Create a Tool and open the output stream."""
         self.args = parse_args(args)
         if self.args.output != "-":
@@ -509,7 +507,7 @@ class Tool(ContextManager["Tool"]):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Optional[bool]:
@@ -666,7 +664,7 @@ class Tool(ContextManager["Tool"]):
             return Status.OK
 
         # Else, find the other commands
-        COMMANDS: Dict[str, Callable[[], int]] = {
+        COMMANDS: dict[str, Callable[[], int]] = {
             "info": self.info,
             "who": self.who,
             "prov": self.prov,
@@ -702,7 +700,7 @@ class Tool(ContextManager["Tool"]):
         else:
             return Path(p).absolute()
 
-    def _wf_id(self, run: Optional[str] = None) -> Tuple[str, Optional[UUID], str]:
+    def _wf_id(self, run: Optional[str] = None) -> tuple[str, Optional[UUID], str]:
         w = run or self.args.id or self.ro.workflow_id
         # ensure consistent UUID URIs
         return _as_uuid(str(w))
@@ -775,11 +773,9 @@ class Tool(ContextManager["Tool"]):
         }
         if cwlprov:
             self.print("Profile: %s" % many(cwlprov))
-        w = ro.workflow_id
-        if w:
+        if w := ro.workflow_id:
             self.print("Workflow run ID: %s" % w)
-        when = ro.bag.info.get("Bagging-Date")
-        if when:
+        if when := ro.bag.info.get("Bagging-Date"):
             self.print("Packaged: %s" % when)
         return Status.OK
 
@@ -923,15 +919,14 @@ class Tool(ContextManager["Tool"]):
 
     def _load_activity_from_provenance(
         self,
-    ) -> Union[Tuple[Literal[Status.OK], Activity], Tuple[int, None]]:
+    ) -> Union[tuple[Literal[Status.OK], Activity], tuple[int, None]]:
         wf_uri, wf_uuid, wf_name = self._wf_id(self.args.run)
         a_uri, a_uuid, a_name = self._wf_id()
         error = self._load_provenance(wf_uri)
         if error != Status.OK:
             return (error, None)
 
-        activity = self.provenance.activity(a_uri)
-        if activity:
+        if activity := self.provenance.activity(a_uri):
             return (Status.OK, activity)
         else:
             _logger.error("Provenance does not describe step %s: %s", wf_name, a_uri)
@@ -986,7 +981,7 @@ class Tool(ContextManager["Tool"]):
         else:
             _logger.info("%ss for workflow %s", put_s, wf_name)
 
-        job: Dict[str, Dict[str, str]] = {}
+        job: dict[str, dict[str, str]] = {}
 
         if is_inputs:
             records: Iterable[Union[Generation, Usage]] = activity.usage()
@@ -1070,7 +1065,7 @@ class Tool(ContextManager["Tool"]):
                 continue
             _logger.debug("entity %s bundledAs %s", file_candidate.uri, bundled)
             bundled_path = self._resource_path(bundled, absolute=absolute)
-            json: Dict[str, Any] = {
+            json: dict[str, Any] = {
                 "class": "File",
                 "path": str(bundled_path),
             }
@@ -1106,8 +1101,8 @@ class Tool(ContextManager["Tool"]):
 
     def _inputs_or_outputs_job(
         self, activity: Activity, is_inputs: bool, absolute: bool
-    ) -> Dict[str, Any]:
-        job: Dict[str, Any] = {}
+    ) -> dict[str, Any]:
+        job: dict[str, Any] = {}
 
         if is_inputs:
             records: Iterable[Union[Usage, Generation]] = activity.usage()
@@ -1228,11 +1223,11 @@ class Tool(ContextManager["Tool"]):
 
         return self._exec_cwlrunner(wf_arg, job_file)
 
-    def _load_cwl(self, wf_file: Union[str, Path]) -> Optional[Dict[str, Any]]:
+    def _load_cwl(self, wf_file: Union[str, Path]) -> Optional[dict[str, Any]]:
         _logger.debug("Loading CWL as JSON: %s", wf_file)
         with open(wf_file) as f:
             # FIXME: Load as yaml in case it is not JSON?
-            cwl = cast(Dict[str, Any], json.load(f))
+            cwl = cast(dict[str, Any], json.load(f))
         ver = cwl["cwlVersion"]
         _logger.debug("Loaded CWL version: %s", ver)
         if not ver.startswith("v1."):
@@ -1240,7 +1235,7 @@ class Tool(ContextManager["Tool"]):
             return None
         return cwl
 
-    def _find_step_run(self, cwl: Dict[str, Any], step_id: str) -> Any:
+    def _find_step_run(self, cwl: dict[str, Any], step_id: str) -> Any:
         step = find_dict_with_item(cwl, step_id)
         if not step:
             _logger.error("Could not find step for ")
@@ -1288,13 +1283,13 @@ class Tool(ContextManager["Tool"]):
         p = self.ro.resolve_path(str(path))
         return p
 
-    def _recreate_job(self, activity: Activity, absolute: bool) -> Dict[str, Any]:
+    def _recreate_job(self, activity: Activity, absolute: bool) -> dict[str, Any]:
         # TODO: Actually do it
         job = self._inputs_or_outputs_job(activity, is_inputs=True, absolute=absolute)
         _logger.debug("Recreated job: %s", job)
         return job
 
-    def _temporary_job(self, job: Dict[str, Any]) -> str:
+    def _temporary_job(self, job: dict[str, Any]) -> str:
         with tempfile.NamedTemporaryFile(
             mode="w", prefix="rerun-", suffix=".json", delete=False, encoding="UTF-8"
         ) as f:
@@ -1509,7 +1504,7 @@ class Tool(ContextManager["Tool"]):
         return Status.OK
 
 
-def main(args: Optional[List[str]] = None) -> int:
+def main(args: Optional[list[str]] = None) -> int:
     with Tool(args) as tool:
         try:
             return tool.main()

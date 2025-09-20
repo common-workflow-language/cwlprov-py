@@ -24,12 +24,12 @@ __license__ = (
 
 import datetime
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterable,
     List,
     Optional,
     Set,
@@ -159,7 +159,7 @@ class Provenance:
                 return self.ro.resolve_path(str(prov))
         return None
 
-    def _load_prov_document(self) -> Union[Tuple[None, None], Tuple[ProvBundle, Path]]:
+    def _load_prov_document(self) -> Union[tuple[None, None], tuple[ProvBundle, Path]]:
         # Preferred order
         candidates = ("xml", "json", "nt", "ttl", "rdf")
         # Note: Not all of these parse consistently with rdflib in py3
@@ -221,7 +221,7 @@ class _Prov:
     def type(self) -> Optional[QualifiedName]:
         return self._prov_attr("prov:type")
 
-    def types(self) -> Set[QualifiedName]:
+    def types(self) -> set[QualifiedName]:
         return set(self._prov_attrs("prov:type"))
 
     @property
@@ -238,7 +238,7 @@ class _Prov:
     def _prov_attr(self, attr: QualifiedNameCandidate) -> Optional[QualifiedName]:
         return first(self._prov_attrs(attr))
 
-    def _prov_attrs(self, attr: QualifiedNameCandidate) -> Set[QualifiedName]:
+    def _prov_attrs(self, attr: QualifiedNameCandidate) -> set[QualifiedName]:
         return self.record.get_attribute(attr)
 
 
@@ -382,7 +382,7 @@ class Entity(_Prov):
     def derivations(self) -> Iterable["Derivation"]:
         return self._records(ProvDerivation, Derivation, PROV_ATTR_USED_ENTITY)
 
-    def secondary_files(self) -> List[Any]:
+    def secondary_files(self) -> list[Any]:
         return [
             d.generated_entity()
             for d in self.derivations()
