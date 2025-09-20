@@ -15,9 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-"""
-cwlprov Command Line internal utility functions
-"""
+"""cwlprov Command Line internal utility functions."""
 __author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
 __license__ = (
