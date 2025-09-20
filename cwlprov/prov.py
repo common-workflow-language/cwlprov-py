@@ -100,6 +100,7 @@ def _as_identifier(uri_or_identifier: Optional[Any]) -> Optional[Identifier]:
 
 class Provenance:
     def __init__(self, ro: "ResearchObject", run: Optional[str] = None) -> None:
+        """Create a Provenance object."""
         self.ro = ro
         self.run_id = Identifier(run if isinstance(run, str) else ro.workflow_id or "")
         self._path = None
@@ -110,6 +111,7 @@ class Provenance:
         self._path = path
 
     def __repr__(self) -> str:
+        """Represent this Provenance object."""
         return f"Provenance<{self.uri} from {self._path}>"
 
     @property
@@ -117,6 +119,7 @@ class Provenance:
         return self.run_id.uri
 
     def entity(self, uri: Any) -> Optional["Entity"]:
+        """Find an Entity by the given URI."""
         ident = _as_identifier(uri)
         if not ident:
             _logger.warning("Entity %s not found in %s", uri, self)

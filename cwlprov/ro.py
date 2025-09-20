@@ -24,10 +24,10 @@ __license__ = (
 
 import atexit
 import importlib.resources
-from contextlib import ExitStack
 import logging
 import pathlib
 import urllib.parse
+from contextlib import ExitStack
 from functools import partial
 from typing import TYPE_CHECKING, Iterable, Optional, Set, Union
 
@@ -70,6 +70,7 @@ class ResearchObject:
     manifest: Graph
 
     def __init__(self, bag: "BDBag") -> None:
+        """Create a ResearchObject from a BDBag."""
         if not bag.normalized_filesystem_names:
             # Not populated? Validate
             bag.validate()
@@ -95,6 +96,7 @@ class ResearchObject:
 
     @property
     def id(self) -> Optional["Identifier"]:
+        """Determine the Identifier for this RO."""
         i = self.id_uriref
         if isinstance(i, BNode):
             return next(self.manifest.objects(i, OWL.sameAs))
@@ -102,6 +104,7 @@ class ResearchObject:
 
     @property
     def id_uriref(self) -> Node:
+        """Find the URI reference for this RO."""
         manifest = URIRef(self.resolve_uri("metadata/manifest.json"))
         ros = set(self.manifest.subjects(ORE.isDescribedBy, manifest))
         if not ros:
@@ -237,6 +240,7 @@ class ResearchObject:
         return None
 
     def resources_with_provenance(self) -> Iterable[Node]:
+        """Find the resources of this Workflow that have provenance."""
         new_annotation = partial(Annotation, self.manifest)
         anns = map(
             new_annotation, self.manifest.subjects(OA.motivatedBy, PROV.has_provenance)
@@ -264,42 +268,55 @@ class ResearchObject:
 
     @property
     def workflow_id(self) -> Optional[Identifier]:
+        """The identifier of the primary Workflow Run."""
         wf_id = self.describes(uri=self.id)
         _logger.debug("Primary Workflow run: %s", wf_id)
         return wf_id
 
 
 class Annotation:
+    """Annotation."""
+
     def __init__(self, graph: Graph, uri: str) -> None:
+        """Create an Annotation."""
         self._graph = graph
         self._id = uri
 
     @property
     def hasBody(self) -> Optional[Node]:
+        """Find the first body Node of this Annotation, if any."""
         return next(self._graph.objects(self._id, OA.hasBody), None)
 
     @property
     def hasBodies(self) -> Set[Node]:
+        """Find the set of body Nodes of this Annotation."""
         return set(self._graph.objects(self._id, OA.hasBody))
 
     @property
     def hasTarget(self) -> Optional[Identifier]:
+        """Find the first target of this Annotation, if any."""
         return next(self._graph.objects(self._id, OA.hasTarget), None)
 
     @property
     def hasTargets(self) -> Set[Node]:
+        """Find which Noes this Annotation targets."""
         return set(self._graph.objects(self._id, OA.hasTarget))
 
     @property
     def motivatedBy(self) -> Optional[Node]:
+        """Find the Node that motivated this Annotation."""
         return next(self._graph.objects(self._id, OA.motivatedBy), None)
 
     def __repr__(self) -> str:
+        """Identifiy this Annotation."""
         return "<Annotation %s>" % self._id
 
 
 class Agent:
+    """Agent."""
+
     def __init__(self, graph: Graph, uri: str) -> None:
+        """Create an Agent."""
         self._graph = graph
         self._id = uri
 
@@ -311,16 +328,20 @@ class Agent:
 
     @property
     def name(self) -> Optional[Node]:
+        """Find the next node in the graph, if any."""
         return next(self._graph.objects(self._id, FOAF.name), None)
 
     @property
     def orcid(self) -> Optional[Node]:
+        """Find the ORCID associated with this Agent, if any."""
         return next(self._graph.objects(self._id, ROTERMS.orcid), None)
 
     def __repr__(self) -> str:
+        """Identify this Agent."""
         return "<Agent %s>" % self._id
 
     def __str__(self) -> str:
+        """Print the name, identifier, and uri of this Agent."""
         s = str(self.name) or "(unknown)"
         o = self.orcid
         if o:

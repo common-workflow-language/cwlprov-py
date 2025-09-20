@@ -106,7 +106,7 @@ CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
 
 
 class Status(IntEnum):
-    """Exit codes from main()"""
+    """Exit codes from main()."""
 
     OK = 0
     UNHANDLED_ERROR = errno.EPERM
@@ -488,6 +488,7 @@ def _set_log_level(quiet: Optional[bool] = None, verbose: int = 0) -> None:
 
 class Tool(ContextManager["Tool"]):
     def __init__(self, args: Optional[List[str]] = None) -> None:
+        """Create a Tool and open the output stream."""
         self.args = parse_args(args)
         if self.args.output != "-":
             self.output: Optional[TextIO] = open(
@@ -503,6 +504,7 @@ class Tool(ContextManager["Tool"]):
             self.output = None
 
     def __enter__(self) -> "Tool":
+        """Enter our ContextManager."""
         return self
 
     def __exit__(
@@ -511,6 +513,7 @@ class Tool(ContextManager["Tool"]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Optional[bool]:
+        """Close the output file."""
         self.close()
         return None
 
@@ -611,7 +614,7 @@ class Tool(ContextManager["Tool"]):
         self.hints = self.args.hints and not self.args.quiet and not self.output
 
     def main(self) -> int:
-        """cwlprov command line tool."""
+        """Start the cwlprov command line tool."""
         args = self.args
 
         status = self._determine_logging()
