@@ -1,4 +1,3 @@
-from pkg_resources import parse_version as parse_version
 from requests.utils import requote_uri as requote_uri
 from typing import Any
 from urllib.parse import urlparse as urlparse, urlunsplit as urlunsplit
