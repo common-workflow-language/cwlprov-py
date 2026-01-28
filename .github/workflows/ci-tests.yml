@@ -29,12 +29,12 @@ jobs:
       TOXENV: ${{ format('py{0}{1}-{2}', matrix.py-ver-major, matrix.py-ver-minor, matrix.step) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           allow-prereleases: true
           python-version: ${{ env.py-semver }}
@@ -46,11 +46,11 @@ jobs:
       - name: Upgrade setuptools and install tox
         run: |
           pip install -U pip setuptools wheel
-          pip install tox tox-gh-actions
+          pip install "tox<4" "tox-gh-actions<3"
 
       - name: MyPy cache
         if: ${{ matrix.step == 'mypy' }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .mypy_cache/${{ env.py-semver }}
           key: mypy-${{ env.py-semver }}
@@ -69,16 +69,16 @@ jobs:
         # step: [lint-readme, pydocstyle]
 
     env:
-      py-semver: "3.10"
-      TOXENV: ${{ format('py310-{0}', matrix.step) }}
+      py-semver: "3.12"
+      TOXENV: ${{ format('py312-{0}', matrix.step) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.py-semver }}
           cache: pip
@@ -86,7 +86,7 @@ jobs:
       - name: Upgrade setuptools and install tox
         run: |
           pip install -U pip setuptools wheel
-          pip install tox tox-gh-actions
+          pip install "tox<4" "tox-gh-actions<3"
 
       - if: ${{ matrix.step == 'pydocstyle' && github.event_name == 'pull_request'}}
         name: Create local branch for diff-quality for PRs
@@ -95,3 +95,25 @@ jobs:
       - name: Test with tox
         run: tox
 
+  release_test:
+    name: cwlprov-py release test
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
+          cache: pip
+
+      - name: Install packages
+        run: |
+          pip install -U pip setuptools wheel
+          pip install virtualenv
+
+      - name: Release test
+        env:
+          RELEASE_SKIP: head
+        run: ./release-test.sh
