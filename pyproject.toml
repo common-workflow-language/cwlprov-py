@@ -54,6 +54,7 @@ dependencies = [
     "arcp >= 0.2.0",
     "rdflib >= 6, <8",
     "typing_extensions",
+    "lxml"
 ]
 
 [project.readme]

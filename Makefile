@@ -29,7 +29,7 @@ EXTRAS=[testing]
 PYSOURCES=$(wildcard ${MODULE}/**.py)
 DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 'tox>4' \
 	isort wheel autoflake flake8-bugbear pyupgrade bandit \
-	-rtest-requirements.txt -rmypy-requirements.txt auto-walrus
+	-rmypy-requirements.txt auto-walrus build
 COVBASE=coverage run --append
 
 # Updating the Major & Minor version below?
@@ -66,7 +66,7 @@ dev: install-dep
 dist: dist/${MODULE}-$(VERSION).tar.gz
 
 dist/${MODULE}-$(VERSION).tar.gz: $(SOURCES)
-	python -m build
+	python3 -m build
 
 ## docs                   : make the docs
 docs: FORCE
@@ -152,15 +152,15 @@ diff-cover.html: coverage.xml
 
 ## test                   : run the cwlprov-py test suite
 test: $(PYSOURCES) FORCE
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) validate && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) info && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) who && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) prov && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) inputs && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) outputs && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) runs && ) true
-	$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) runtimes && ) true
-	#$(foreach RO,$(shell ls test),python -m cwlprov.tool -d test/$(RO) derived && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) validate && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) info && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) who && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) prov && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) inputs && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) outputs && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) runs && ) true
+	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) runtimes && ) true
+	#$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) derived && ) true
 
 ## testcov                : run the cwlprov-py test suite and collect coverage
 testcov: $(PYSOURCES)
@@ -192,7 +192,7 @@ release-test: FORCE
 release: release-test
 	. testenv2/bin/activate && \
 		pip install build && \
-		python -m build testenv2/src/${PACKAGE} && \
+		python3 -m build testenv2/src/${PACKAGE} && \
 		pip install twine && \
 		twine upload testenv2/src/${PACKAGE}/dist/* && \
 		git tag ${VERSION} && git push --tags
