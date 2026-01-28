@@ -26,7 +26,7 @@ __license__ = (
 import datetime
 from collections.abc import Iterable, Sequence
 from functools import partial
-from typing import Any, Optional, Set, Tuple, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 prov_type = Union[type, tuple[type]]
 

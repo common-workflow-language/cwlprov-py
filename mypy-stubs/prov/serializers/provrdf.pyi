@@ -56,7 +56,7 @@ class ProvRDFSerializer(Serializer):
         stream: io.IOBase,
         rdf_format: str = "trig",
         PROV_N_MAP: dict[pm.QualifiedName, str] = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
     document: Incomplete
     def deserialize(
@@ -65,7 +65,7 @@ class ProvRDFSerializer(Serializer):
         rdf_format: str = "trig",
         relation_mapper: dict[URIRef, str] = ...,
         predicate_mapper: dict[URIRef, pm.QualifiedName] = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> pm.ProvDocument: ...
     def valid_identifier(
         self, value: pm.QualifiedNameCandidate

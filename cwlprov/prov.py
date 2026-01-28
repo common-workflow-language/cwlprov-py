@@ -27,18 +27,7 @@ import datetime
 import logging
 from collections.abc import Iterable
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union, cast
 
 from prov.identifier import Identifier, Namespace, QualifiedName
 from prov.model import (
