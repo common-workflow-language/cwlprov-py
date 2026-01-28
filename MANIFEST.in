@@ -1,2 +1,2 @@
-include MANIFEST.in
+include Makefile MANIFEST.in
 include cwlprov/context/bundle.jsonld
