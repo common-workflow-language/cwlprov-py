@@ -16,6 +16,7 @@
 
 
 """cwlprov Research Object."""
+
 __author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
 __license__ = (

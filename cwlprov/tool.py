@@ -16,6 +16,7 @@
 
 
 """cwlprov Command Line Tool."""
+
 __author__ = "Stian Soiland-Reyes <https://orcid.org/0000-0001-9842-9718>"
 __copyright__ = "© 2018 Software Freedom Conservancy (SFC)"
 __license__ = (
@@ -1178,7 +1179,7 @@ class Tool(ContextManager["Tool"]):
             job_file: Union[str, Path] = self._find_primary_job()
         else:
             _logger.debug("Recreating job from level 1 provenance")
-            (error, _a) = self._load_activity_from_provenance()
+            error, _a = self._load_activity_from_provenance()
             if error != Status.OK:
                 return error
             a = cast(Activity, _a)
