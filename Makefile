@@ -162,10 +162,6 @@ test: $(PYSOURCES) FORCE
 	$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) runtimes && ) true
 	#$(foreach RO,$(shell ls test),python3 -m cwlprov.tool -d test/$(RO) derived && ) true
 
-## testcov                : run the cwlprov-py test suite and collect coverage
-testcov: $(PYSOURCES)
-	python -m pytest --addopts "--cov" ${PYTEST_EXTRA}
-
 sloccount.sc: $(PYSOURCES) Makefile
 	sloccount --duplicates --wide --details $^ > $@
 
