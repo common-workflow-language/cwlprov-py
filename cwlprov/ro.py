@@ -31,7 +31,7 @@ import urllib.parse
 from collections.abc import Iterable
 from contextlib import ExitStack
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Set, Union
+from typing import Optional, Union
 
 import arcp
 from bdbag.bdbagit import BDBag

@@ -61,7 +61,7 @@ def resolve_fetch(
     keychain_file=...,
     config_file: Any | None = ...,
     filter_expr: Any | None = ...,
-    **kwargs
+    **kwargs,
 ): ...
 def materialize(
     input_path,
@@ -72,5 +72,5 @@ def materialize(
     config_file: Any | None = ...,
     filter_expr: Any | None = ...,
     force: bool = ...,
-    **kwargs
+    **kwargs,
 ): ...

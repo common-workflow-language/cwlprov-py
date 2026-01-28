@@ -41,20 +41,7 @@ from enum import IntEnum
 from functools import partial
 from pathlib import Path
 from types import TracebackType
-from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Dict,
-    List,
-    Optional,
-    Set,
-    TextIO,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, Callable, ContextManager, Optional, TextIO, Union, cast
 from uuid import UUID
 
 from bdbag.bdbagit import BagError, BDBag

@@ -39,14 +39,14 @@ def fetch_bag_files(
     force: bool = ...,
     callback: Any | None = ...,
     filter_expr: Any | None = ...,
-    **kwargs
+    **kwargs,
 ): ...
 def fetch_single_file(
     url,
     output_path: Any | None = ...,
     config_file: Any | None = ...,
     keychain_file=...,
-    **kwargs
+    **kwargs,
 ): ...
 def fetch_file(url, output_path, config, keychain, fetchers, **kwargs): ...
 def cleanup_fetchers(fetchers) -> None: ...

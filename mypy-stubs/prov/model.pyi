@@ -524,14 +524,14 @@ class ProvDocument(ProvBundle):
         self,
         destination: io.IOBase | PathLike | None = None,
         format: str = "json",
-        **args: Any
+        **args: Any,
     ) -> str | None: ...
     @staticmethod
     def deserialize(
         source: io.IOBase | PathLike | None = None,
         content: str | bytes | None = None,
         format: str = "json",
-        **args: Any
+        **args: Any,
     ) -> ProvDocument: ...
 
 def sorted_attributes(
