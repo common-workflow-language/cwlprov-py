@@ -27,7 +27,7 @@ EXTRAS=
 # `SHELL=bash` doesn't work for some, so don't use BASH-isms like
 # `[[` conditional expressions.
 PYSOURCES=$(wildcard ${MODULE}/**.py) setup.py
-DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 tox tox-pyenv \
+DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 'tox>4' \
 	isort wheel autoflake flake8-bugbear pyupgrade bandit \
 	-rtest-requirements.txt -rmypy-requirements.txt auto-walrus
 COVBASE=coverage run --append
