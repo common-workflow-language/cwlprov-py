@@ -22,18 +22,18 @@
 
 MODULE=cwlprov
 PACKAGE=cwlprov
-EXTRAS=
+EXTRAS=[testing]
 
 # `SHELL=bash` doesn't work for some, so don't use BASH-isms like
 # `[[` conditional expressions.
-PYSOURCES=$(wildcard ${MODULE}/**.py) setup.py
+PYSOURCES=$(wildcard ${MODULE}/**.py)
 DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 'tox>4' \
 	isort wheel autoflake flake8-bugbear pyupgrade bandit \
 	-rtest-requirements.txt -rmypy-requirements.txt auto-walrus
 COVBASE=coverage run --append
 
 # Updating the Major & Minor version below?
-# Don't forget to update setup.py as well
+# Don't forget to update pyproject.toml as well
 #VERSION=8.2.$(shell date +%Y%m%d%H%M%S --utc --date=`git log --first-parent \
 #	--max-count=1 --format=format:%cI`)
 
@@ -66,7 +66,7 @@ dev: install-dep
 dist: dist/${MODULE}-$(VERSION).tar.gz
 
 dist/${MODULE}-$(VERSION).tar.gz: $(SOURCES)
-	python setup.py sdist bdist_wheel
+	python -m build
 
 ## docs                   : make the docs
 docs: FORCE
@@ -75,7 +75,6 @@ docs: FORCE
 ## clean                  : clean up all temporary / machine-generated files
 clean: FORCE
 	rm -rf ${MODULE}/__pycache__
-	python setup.py clean --all || true
 	rm -Rf .coverage
 	rm -f diff-cover.html
 
@@ -93,7 +92,7 @@ pydocstyle: $(PYSOURCES)
 	pydocstyle --add-ignore=D100,D101,D102,D103 $^ || true
 
 pydocstyle_report.txt: $(PYSOURCES)
-	pydocstyle setup.py $^ > $@ 2>&1 || true
+	pydocstyle $^ > $@ 2>&1 || true
 
 ## diff_pydocstyle_report : check Python docstring style for changed files only
 diff_pydocstyle_report: pydocstyle_report.txt
@@ -165,7 +164,7 @@ test: $(PYSOURCES) FORCE
 
 ## testcov                : run the cwlprov-py test suite and collect coverage
 testcov: $(PYSOURCES)
-	python setup.py test --addopts "--cov" ${PYTEST_EXTRA}
+	python -m pytest --addopts "--cov" ${PYTEST_EXTRA}
 
 sloccount.sc: $(PYSOURCES) Makefile
 	sloccount --duplicates --wide --details $^ > $@
@@ -179,7 +178,7 @@ list-author-emails:
 	@git log --format='%aN,%aE' | sort -u | grep -v 'root'
 
 mypy3: mypy
-mypy: $(filter-out setup.py,$(PYSOURCES))
+mypy: $(PYSOURCES)
 	MYPYPATH=$$MYPYPATH:mypy-stubs mypy $^
 
 pyupgrade: $(PYSOURCES)
@@ -192,8 +191,8 @@ release-test: FORCE
 
 release: release-test
 	. testenv2/bin/activate && \
-		python testenv2/src/${PACKAGE}/setup.py sdist bdist_wheel
-	. testenv2/bin/activate && \
+		pip install build && \
+		python -m build testenv2/src/${PACKAGE} && \
 		pip install twine && \
 		twine upload testenv2/src/${PACKAGE}/dist/* && \
 		git tag ${VERSION} && git push --tags
