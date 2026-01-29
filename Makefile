@@ -31,11 +31,7 @@ DEVPKGS=diff_cover black pylint pep257 pydocstyle flake8 'tox>4' \
 	isort wheel autoflake flake8-bugbear pyupgrade bandit \
 	-rmypy-requirements.txt auto-walrus build
 COVBASE=coverage run --append
-
-# Updating the Major & Minor version below?
-# Don't forget to update pyproject.toml as well
-#VERSION=8.2.$(shell date +%Y%m%d%H%M%S --utc --date=`git log --first-parent \
-#	--max-count=1 --format=format:%cI`)
+VERSION=$(shell echo $$(tail -n 1 cwlprov/__init__.py | awk '{print $$3}'))
 
 ## all                    : default task (install cwlprov-py in dev mode)
 all: dev
