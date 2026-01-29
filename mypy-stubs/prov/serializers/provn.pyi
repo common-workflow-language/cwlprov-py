@@ -1,8 +1,8 @@
-import io
-from prov.model import ProvDocument as ProvDocument
+from _typeshed import Incomplete
 from prov.serializers import Serializer as Serializer
-from typing import Any
+
+logger: Incomplete
 
 class ProvNSerializer(Serializer):
-    def serialize(self, stream: io.IOBase, **args: Any) -> None: ...
-    def deserialize(self, stream: io.IOBase, **args: Any) -> ProvDocument: ...
+    def serialize(self, stream, **kwargs) -> None: ...
+    def deserialize(self, stream, **kwargs) -> None: ...
