@@ -20,7 +20,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cwlprov"
-version = "0.2.0"
+version = "0.2.1"  # Also update cwlprov/__init__.py
 authors = [{name = "Stian Soiland-Reyes", email = "stain@apache.org"}]
 # https://orcid.org/0000-0001-9842-9718
 license = {text = "Apache License, Version 2.0"}
