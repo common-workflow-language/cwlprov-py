@@ -55,12 +55,13 @@ from prov.model import (
     ProvSpecialization,
     ProvStart,
     ProvUsage,
-    QualifiedNameCandidate,
 )
 
 from .utils import first, prov_type
 
 if TYPE_CHECKING:
+    from prov.model import QualifiedNameCandidate
+
     from .ro import ResearchObject
 
 CWLPROV = Namespace("cwlprov", "https://w3id.org/cwl/prov#")
@@ -225,10 +226,10 @@ class _Prov:
     def __str__(self) -> str:
         return self.record.get_provn()
 
-    def _prov_attr(self, attr: QualifiedNameCandidate) -> Optional[QualifiedName]:
+    def _prov_attr(self, attr: "QualifiedNameCandidate") -> Optional[QualifiedName]:
         return first(self._prov_attrs(attr))
 
-    def _prov_attrs(self, attr: QualifiedNameCandidate) -> set[QualifiedName]:
+    def _prov_attrs(self, attr: "QualifiedNameCandidate") -> set[QualifiedName]:
         return self.record.get_attribute(attr)
 
 
