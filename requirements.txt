@@ -1,4 +1,4 @@
-prov == 1.5.1
+prov == 1.5.3
 bdbag >= 1.4.1
 arcp >= 0.2.0
 rdflib >= 6, <8
