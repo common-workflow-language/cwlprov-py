@@ -48,8 +48,10 @@ from bdbag.bdbagit import BagError, BDBag
 from prov.identifier import Identifier, Namespace, QualifiedName
 from prov.model import (
     PROV_ATTR_ACTIVITY,
+    PROV_ATTR_ENDTIME,
     PROV_ATTR_ENTITY,
     PROV_ATTR_STARTER,
+    PROV_ATTR_STARTTIME,
     PROV_ATTR_TIME,
     PROV_ROLE,
     ProvBundle,
@@ -77,6 +79,7 @@ BAGIT_RO_PROFILES = (
 )
 CWLPROV_SUPPORTED = (
     # Decreasing order as first item is output as example
+    "https://w3id.org/cwl/prov/0.7.0",
     "https://w3id.org/cwl/prov/0.6.0",
     "https://w3id.org/cwl/prov/0.5.0",
     "https://w3id.org/cwl/prov/0.4.0",
@@ -422,6 +425,37 @@ def _prov_with_attr(
 
 def _prov_attr(attr: QualifiedName, elem: ProvRecord) -> Optional[Any]:
     return first(elem.get_attribute(attr))
+
+
+def _activity_time(
+    prov_doc: ProvBundle, activity_id: Identifier, attr: QualifiedName
+) -> Optional[Any]:
+    """Return an activity's own inline `prov:startTime`/`prov:endTime` attribute.
+
+    Since CWLProv 0.7.0, cwltool may encode the start/end time of an activity
+    (e.g. the top-level workflow run) directly as `prov:startTime`/`prov:endTime`
+    attributes on the `prov:Activity` record itself, instead of emitting a
+    separate qualified `prov:Start`/`prov:End` record. This is used as a
+    fallback when no such qualified record is found.
+    """
+    records = prov_doc.get_record(activity_id)
+    activity = first(records) if isinstance(records, list) else records
+    return activity and _prov_attr(attr, activity)
+
+
+def _naive(dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
+    """Convert to a naive local timestamp, to allow comparing/subtracting timestamps.
+
+    Some activities (e.g. the top-level workflow run since CWLProv 0.7.0) have
+    a timezone-aware `prov:startTime`/`prov:endTime`, while related activities
+    may still use naive local timestamps recorded via separate `prov:Start`/
+    `prov:End` records. Mixing the two raises a `TypeError` on subtraction, so
+    an aware timestamp is first converted to local time before its timezone
+    info is dropped, so it remains comparable to the naive local timestamps.
+    """
+    if isinstance(dt, datetime.datetime) and dt.tzinfo is not None:
+        return dt.astimezone().replace(tzinfo=None)
+    return dt
 
 
 MEDIA_TYPES = {
@@ -1378,9 +1412,13 @@ class Tool(ContextManager["Tool"]):
             label = " %s " % (first(activity.get_attribute("prov:label")) or "")
 
         start = first(_prov_with_attr(prov_doc, ProvStart, activity_id))
-        start_time = start and _prov_attr(PROV_ATTR_TIME, start)
+        start_time = (start and _prov_attr(PROV_ATTR_TIME, start)) or _activity_time(
+            prov_doc, activity_id, PROV_ATTR_STARTTIME
+        )
         end = first(_prov_with_attr(prov_doc, ProvEnd, activity_id))
-        end_time = end and _prov_attr(PROV_ATTR_TIME, end)
+        end_time = (end and _prov_attr(PROV_ATTR_TIME, end)) or _activity_time(
+            prov_doc, activity_id, PROV_ATTR_ENDTIME
+        )
 
         if args.verbose and start:
             self.print(start)
@@ -1425,14 +1463,20 @@ class Tool(ContextManager["Tool"]):
                         first(c_activity.get_attribute("prov:label")) or ""
                     )
                 c_start = first(_prov_with_attr(prov_doc, ProvStart, child))
-                c_start_time = c_start and _prov_attr(PROV_ATTR_TIME, c_start)
+                c_start_time = (
+                    c_start and _prov_attr(PROV_ATTR_TIME, c_start)
+                ) or _activity_time(prov_doc, child, PROV_ATTR_STARTTIME)
                 c_end = first(_prov_with_attr(prov_doc, ProvEnd, child))
-                c_end_time = c_end and _prov_attr(PROV_ATTR_TIME, c_end)
+                c_end_time = (
+                    c_end and _prov_attr(PROV_ATTR_TIME, c_end)
+                ) or _activity_time(prov_doc, child, PROV_ATTR_ENDTIME)
 
                 c_duration = ""
                 if args.duration:
-                    if c_start_time and c_end_time:
-                        c_duration = " (%s)" % (c_end_time - c_start_time)
+                    c_start_naive = _naive(c_start_time)
+                    c_end_naive = _naive(c_end_time)
+                    if c_start_naive and c_end_naive:
+                        c_duration = " (%s)" % (c_end_naive - c_start_naive)
                     else:
                         c_duration = " (unknown duration)"
 
@@ -1472,8 +1516,10 @@ class Tool(ContextManager["Tool"]):
 
         w_duration = ""
         if args.duration:
-            if start_time and end_time:
-                w_duration = " (%s)" % (end_time - start_time)
+            start_naive = _naive(start_time)
+            end_naive = _naive(end_time)
+            if start_naive and end_naive:
+                w_duration = " (%s)" % (end_naive - start_naive)
             else:
                 w_duration = " (unknown duration)"
 

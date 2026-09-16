@@ -187,6 +187,7 @@ Note that a warning will be printed if an unknown CWLProv version is detected:
     $ cwlprov
     WARNING:cwlprov.tool:Unsupported CWLProv version: {'https://w3id.org/cwl/prov/0.8.0'}
     Supported profiles:
+    https://w3id.org/cwl/prov/0.7.0
     https://w3id.org/cwl/prov/0.6.0
     https://w3id.org/cwl/prov/0.5.0
     https://w3id.org/cwl/prov/0.4.0
