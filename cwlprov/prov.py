@@ -33,6 +33,7 @@ from prov.identifier import Identifier, Namespace, QualifiedName
 from prov.model import (
     PROV_ATTR_ACTIVITY,
     PROV_ATTR_AGENT,
+    PROV_ATTR_ENDTIME,
     PROV_ATTR_ENTITY,
     PROV_ATTR_GENERAL_ENTITY,
     PROV_ATTR_GENERATED_ENTITY,
@@ -40,6 +41,7 @@ from prov.model import (
     PROV_ATTR_PLAN,
     PROV_ATTR_SPECIFIC_ENTITY,
     PROV_ATTR_STARTER,
+    PROV_ATTR_STARTTIME,
     PROV_ATTR_TIME,
     PROV_ATTR_USAGE,
     PROV_ATTR_USED_ENTITY,
@@ -87,6 +89,21 @@ def _as_identifier(uri_or_identifier: Optional[Any]) -> Optional[Identifier]:
         return uri_or_identifier
     else:
         return Identifier(str(uri_or_identifier))
+
+
+def _naive(dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
+    """Convert to a naive local timestamp, to allow comparing/subtracting timestamps.
+
+    Some activities (e.g. the top-level workflow run since CWLProv 0.7.0) have
+    a timezone-aware `prov:startTime`/`prov:endTime`, while related activities
+    may still use naive local timestamps recorded via separate `prov:Start`/
+    `prov:End` records. Mixing the two raises a `TypeError` on subtraction, so
+    an aware timestamp is first converted to local time before its timezone
+    info is dropped, so it remains comparable to the naive local timestamps.
+    """
+    if isinstance(dt, datetime.datetime) and dt.tzinfo is not None:
+        return dt.astimezone().replace(tzinfo=None)
+    return dt
 
 
 class Provenance:
@@ -259,12 +276,32 @@ class Activity(_Prov):
     def end(self) -> Optional["End"]:
         return first(self._records(ProvEnd, End, PROV_ATTR_ACTIVITY))
 
-    def duration(self) -> Optional[datetime.timedelta]:
-        # Lots of guards in case start or end are missing
+    def start_time(self) -> Optional[datetime.datetime]:
+        """Return the time this activity started.
+
+        Prefers a separate qualified `prov:Start` record, but falls back to
+        this activity's own inline `prov:startTime` attribute. Since CWLProv
+        0.7.0, cwltool may encode the start of an activity (e.g. the
+        top-level workflow run) this way instead of emitting a `prov:Start`
+        record.
+        """
         start = self.start()
-        s = start and start.time
+        if start:
+            return start.time
+        return cast(Optional[datetime.datetime], self._prov_attr(PROV_ATTR_STARTTIME))
+
+    def end_time(self) -> Optional[datetime.datetime]:
+        """Return the time this activity ended, with the same fallback as `start_time`."""
         end = self.end()
-        e = end and end.time
+        if end:
+            return end.time
+        return cast(Optional[datetime.datetime], self._prov_attr(PROV_ATTR_ENDTIME))
+
+    def duration(self) -> Optional[datetime.timedelta]:
+        """Obtain the duration between start/end time with timezone awareness."""
+        # Lots of guards in case start or end are missing
+        s = _naive(self.start_time())
+        e = _naive(self.end_time())
         if s and e:
             return e - s
         return None
